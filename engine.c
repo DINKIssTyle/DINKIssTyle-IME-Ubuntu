@@ -5,23 +5,7 @@
 #include <string.h>
 
 static void debug_log(const char *fmt, ...) {
-  // Simple fixed path to avoid complexity and segfaults
-  const char *log_path = "/tmp/dkst_debug.log";
-
-  FILE *f = fopen(log_path, "a");
-  if (f) {
-    va_list args;
-    va_start(args, fmt);
-    vfprintf(f, fmt, args);
-    va_end(args);
-    fclose(f);
-  } else {
-    // Fallback to stderr
-    va_list args;
-    va_start(args, fmt);
-    vfprintf(stderr, fmt, args);
-    va_end(args);
-  }
+  // Debug logging disabled for production
 }
 
 G_DEFINE_AUTOPTR_CLEANUP_FUNC(IBusEngine, g_object_unref)
@@ -218,6 +202,14 @@ static void update_preedit(DkstEngine *engine) {
     ibus_text_append_attribute(text, IBUS_ATTR_TYPE_UNDERLINE,
                                IBUS_ATTR_UNDERLINE_SINGLE, 0,
                                ibus_text_get_length(text));
+
+    // Attempt to force visibility in Sublime Text by adding a background color
+    // attribute. Using a neutral light gray (0xDDDDDD). IBUS colors are
+    // typically simple integers (RGB). Note: This might look weird in dark
+    // modes, but we need to verify visibility first. 0x00RRGGBB
+    ibus_text_append_attribute(text, IBUS_ATTR_TYPE_BACKGROUND, 0x00666666, 0,
+                               ibus_text_get_length(text));
+
     // Use PREEDIT_COMMIT mode to ensure text stays at original position if
     // committed automatically
     ibus_engine_update_preedit_text_with_mode((IBusEngine *)engine, text,
@@ -495,6 +487,17 @@ static void dkst_engine_disable(IBusEngine *e) {
   commit_full(engine);
 }
 
+static void dkst_engine_set_capabilities(IBusEngine *e, guint caps) {
+  // Log the capabilities reported by the client application
+  debug_log("set_capabilities: %x\n", caps);
+
+  if (caps & IBUS_CAP_PREEDIT_TEXT) {
+    debug_log("Client supports IBUS_CAP_PREEDIT_TEXT\n");
+  } else {
+    debug_log("Client DOES NOT support IBUS_CAP_PREEDIT_TEXT\n");
+  }
+}
+
 static void dkst_engine_class_init(DkstEngineClass *klass) {
   GObjectClass *object_class = G_OBJECT_CLASS(klass);
   IBusEngineClass *engine_class = IBUS_ENGINE_CLASS(klass);
@@ -506,6 +509,7 @@ static void dkst_engine_class_init(DkstEngineClass *klass) {
   engine_class->focus_out = dkst_engine_focus_out;
   engine_class->reset = dkst_engine_reset;
   engine_class->disable = dkst_engine_disable;
+  engine_class->set_capabilities = dkst_engine_set_capabilities;
 
   // Register property activate handler
   engine_class->property_activate = dkst_engine_property_activate;
