@@ -1,0 +1,8 @@
+{
+    "EnableMoaJjiki": true,
+    "EnableCustomShift": false,
+    "CustomShiftMappings": {
+        "Q": "CustomString1",
+        "W": "CustomString2"
+    }
+}

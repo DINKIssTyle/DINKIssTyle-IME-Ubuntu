@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<component>
+	<name>com.dinkisstyle.inputmethod</name>
+	<description>DINKIssTyle Input Method</description>
+	<exec>/usr/bin/python3 /usr/share/ibus-dinkisstyle/engine.py</exec>
+	<version>1.0</version>
+	<author>Dinki</author>
+	<license>GPL</license>
+	<homepage>http://dinkisstyle.com</homepage>
+	<textdomain>ibus-dinkisstyle</textdomain>
+
+	<engines>
+		<engine>
+			<name>dinkisstyle</name>
+			<longname>DINKIssTyle</longname>
+			<description>DINKIssTyle Korean Input Method</description>
+			<language>ko</language>
+			<license>GPL</license>
+			<author>Dinki</author>
+			<icon>/usr/share/ibus-dinkisstyle/icon.png</icon>
+			<layout>us</layout>
+			<fallback-layout>us</fallback-layout>
+		</engine>
+	</engines>
+</component>
