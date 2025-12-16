@@ -1,5 +1,4 @@
 
-
 #include "hangul.h"
 #include <ibus.h>
 #include <stdio.h>
@@ -112,12 +111,7 @@ static void load_config(DkstEngine *engine) {
           gchar *val =
               g_key_file_get_string(key_file, "CustomShift", keys[i], NULL);
           if (val) {
-            g_hash_table_insert(
-                engine->shift_mappings, g_strdup(keys[i]),
-                val); // val is adopted/freed by hashtable? No,
-                      // g_key_file_get_string returns newly allocated.
-                      // Hashtable takes ownership if destroy func set.
-                      // I set g_free for value destroy func.
+            g_hash_table_insert(engine->shift_mappings, g_strdup(keys[i]), val);
           }
         }
         g_strfreev(keys);
@@ -189,6 +183,39 @@ static void check_and_commit_pending(DkstEngine *engine) {
   }
 }
 
+// --- Properties & Setup ---
+static void dkst_engine_register_props(DkstEngine *engine) {
+  IBusPropList *props = ibus_prop_list_new();
+
+  // Settings Property
+  IBusProperty *prop_setup =
+      ibus_property_new("Setup", PROP_TYPE_NORMAL,
+                        ibus_text_new_from_string("환경설정 (Settings)"),
+                        "gtk-preferences", // Standard icon
+                        ibus_text_new_from_string("Open Settings"), TRUE, TRUE,
+                        PROP_STATE_UNCHECKED, NULL);
+  ibus_prop_list_append(props, prop_setup);
+
+  ibus_engine_register_properties((IBusEngine *)engine, props);
+}
+
+static void dkst_engine_property_activate(IBusEngine *e, const gchar *prop_name,
+                                          guint prop_state) {
+  debug_log("Property Activate: %s\n", prop_name);
+
+  if (g_strcmp0(prop_name, "Setup") == 0) {
+    // Launch setup.py
+    gchar *argv[] = {"/usr/share/ibus-dinkisstyle/setup.py", NULL};
+    GError *error = NULL;
+    g_spawn_async(NULL, argv, NULL, G_SPAWN_SEARCH_PATH, NULL, NULL, NULL,
+                  &error);
+    if (error) {
+      debug_log("Failed to launch setup: %s\n", error->message);
+      g_error_free(error);
+    }
+  }
+}
+
 static gboolean dkst_engine_process_key_event(IBusEngine *e, guint keyval,
                                               guint keycode, guint state) {
   DkstEngine *engine = (DkstEngine *)e;
@@ -201,8 +228,6 @@ static gboolean dkst_engine_process_key_event(IBusEngine *e, guint keyval,
     return FALSE;
 
   // Check for Modifier Keys itself being pressed (not just holding modifier)
-  // If the key IS a modifier, we should assume it doesn't commit the
-  // composition.
   switch (keyval) {
   case IBUS_KEY_Shift_L:
   case IBUS_KEY_Shift_R:
@@ -221,13 +246,6 @@ static gboolean dkst_engine_process_key_event(IBusEngine *e, guint keyval,
   // Custom Shift Handling
   gboolean is_shift = (state & IBUS_SHIFT_MASK) != 0;
   if (engine->enable_custom_shift && is_shift && engine->is_hangul_mode) {
-    // Convert keycode/keyval to string key
-    // We use keyval names e.g. "Q", "W"
-    // Or we can map specific keys.
-    // Let's use gdk_keyval_name or similar if available, or just simple char
-    // mapping Since we are in engine.c, we have keyval. Assume mapping file
-    // uses "Q", "W", "A", etc.
-
     const gchar *key_name = ibus_keyval_name(keyval);
     if (key_name) {
       gchar *mapped = g_hash_table_lookup(engine->shift_mappings, key_name);
@@ -241,8 +259,6 @@ static gboolean dkst_engine_process_key_event(IBusEngine *e, guint keyval,
 
   // Modifier check
   // Exception: Shift+Space for mode toggle
-  // gboolean is_shift = (state & IBUS_SHIFT_MASK) != 0; // Already declared
-  // above
   gboolean is_space = (keyval == IBUS_KEY_space);
 
   // Check for Shift+Space
@@ -254,7 +270,7 @@ static gboolean dkst_engine_process_key_event(IBusEngine *e, guint keyval,
     return TRUE; // Consume event
   }
 
-  // Also support Hangul key if present on keyboard
+  // Also support Hangul key
   if (keyval == IBUS_KEY_Hangul) {
     debug_log("Hangul Key Detected. Toggling mode.\n");
     commit_full(engine);
@@ -267,7 +283,6 @@ static gboolean dkst_engine_process_key_event(IBusEngine *e, guint keyval,
   // But if Ctrl/Alt/Super are pressed, ignore.
   if (state & (IBUS_CONTROL_MASK | IBUS_MOD1_MASK | IBUS_SUPER_MASK)) {
     debug_log("Modifier pressed, ignoring.\n");
-    // If we have composition, commit it? Usually yes if hotkey is triggered.
     if (dkst_hangul_has_composed(&engine->hangul)) {
       commit_full(engine);
     }
@@ -299,31 +314,16 @@ static gboolean dkst_engine_process_key_event(IBusEngine *e, guint keyval,
   if (keyval >= 32 && keyval <= 126) {
     char c = (char)keyval;
     if (dkst_hangul_process(&engine->hangul, c)) {
-      // Processed.
-      // Check for any completed partials (e.g. from moa-jjik-gi or auto-commit)
       check_and_commit_pending(engine);
       update_preedit(engine);
       return TRUE;
     } else {
-      // Not processed (e.g. non-mapped key like punctuation).
-      // CRITICAL FIX: Even if not processed, dkst_hangul_process might have
-      // pushed the current composition to 'completed' queue and reset state.
-      // We MUST check for pending commits here.
-
-      check_and_commit_pending(engine); // Fix for "Double Finale"
-
-      // Fix for "Phantom Character" (User reported "다" remains visible)
-      // We must clear/update the preedit because the state inside hangul has
-      // likely reset but the IBus client still shows the old preedit.
+      check_and_commit_pending(engine);
       update_preedit(engine);
-
-      // Also commit any remaining active composition (rare if process returns
-      // false logic is correct, but safe)
       if (dkst_hangul_has_composed(&engine->hangul)) {
         commit_full(engine);
       }
-
-      return FALSE; // Let system handle the raw key (e.g. period)
+      return FALSE;
     }
   }
 
@@ -336,9 +336,12 @@ static gboolean dkst_engine_process_key_event(IBusEngine *e, guint keyval,
   return FALSE;
 }
 
-static void dkst_engine_focus_in(IBusEngine *engine) {
+static void dkst_engine_focus_in(IBusEngine *e) {
+  DkstEngine *engine = (DkstEngine *)e;
   // Refresh config on focus in
-  load_config((DkstEngine *)engine);
+  load_config(engine);
+  // Register Properties
+  dkst_engine_register_props(engine);
 }
 
 static void dkst_engine_focus_out(IBusEngine *e) {
@@ -362,6 +365,9 @@ static void dkst_engine_class_init(DkstEngineClass *klass) {
   engine_class->focus_in = dkst_engine_focus_in;
   engine_class->focus_out = dkst_engine_focus_out;
   engine_class->reset = dkst_engine_reset;
+
+  // Register property activate handler
+  engine_class->property_activate = dkst_engine_property_activate;
 }
 
 // --- Main ---
