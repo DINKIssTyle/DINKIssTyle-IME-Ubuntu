@@ -1,0 +1,10 @@
+Package: ibus-dkst
+Version: 1.0
+Section: utils
+Priority: optional
+Architecture: amd64
+Depends: ibus, python3, python3-gi, gir1.2-gtk-3.0
+Maintainer: Dinki <dinki@example.com>
+Description: DKST Korean Input Method
+ A custom Korean Input Method Engine (IME) for IBus.
+ Features experimental hangul composition and customizable key bindings.

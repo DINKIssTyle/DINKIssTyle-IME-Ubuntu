@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <component>
-	<name>com.dinkisstyle.inputmethod</name>
-	<description>DINKIssTyle Input Method</description>
-	<exec>/usr/share/ibus-dinkisstyle/dinkisstyle-ime</exec>
-	<setup>/usr/share/ibus-dinkisstyle/setup.py</setup>
+	<name>com.dkst.inputmethod</name>
+	<description>DKST Input Method</description>
+	<exec>/usr/share/ibus-dkst/dkst-ime</exec>
+	<setup>/usr/share/ibus-dkst/setup.py</setup>
 	<version>1.0</version>
 	<author>Dinki</author>
 	<license>GPL</license>
 	<homepage>http://dinkisstyle.com</homepage>
-	<textdomain>ibus-dinkisstyle</textdomain>
+	<textdomain>ibus-dkst</textdomain>
 
 	<engines>
 		<engine>
@@ -18,8 +18,8 @@
 			<language>ko</language>
 			<license>GPL</license>
 			<author>Dinki</author>
-			<icon>/usr/share/ibus-dinkisstyle/icon.png</icon>
-			<setup>/usr/share/ibus-dinkisstyle/setup.py</setup>
+			<icon>/usr/share/ibus-dkst/icon.png</icon>
+			<setup>/usr/share/ibus-dkst/setup.py</setup>
 			<symbol>&#xD55C;</symbol>
 			<layout>us</layout>
 			<fallback-layout>us</fallback-layout>

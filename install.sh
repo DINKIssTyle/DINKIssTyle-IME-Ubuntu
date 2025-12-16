@@ -1,8 +1,8 @@
 #!/bin/bash
 
-DEST_DIR="/usr/share/ibus-dinkisstyle"
+DEST_DIR="/usr/share/ibus-dkst"
 COMPONENT_DIR="/usr/share/ibus/component"
-USER_CONFIG_DIR="$HOME/.config/ibus-dinkisstyle"
+USER_CONFIG_DIR="$HOME/.config/ibus-dkst"
 
 echo "Installing DKST IME..."
 
@@ -16,7 +16,6 @@ fi
 echo "Copying scripts..."
 # Build with Make
 echo "Building..."
-echo "Building..."
 make clean
 if ! make; then
     echo "Build failed!"
@@ -27,36 +26,35 @@ fi
 echo "Copying binary..."
 echo "Stopping existing process if running..."
 sudo pkill -f dinkisstyle-ime || true
-sudo cp dinkisstyle-ime "$DEST_DIR/"
+sudo pkill -f dkst-ime || true
+
+sudo cp dkst-ime "$DEST_DIR/"
 sudo cp setup.py "$DEST_DIR/"
 sudo cp icon.png "$DEST_DIR/"
-sudo chmod +x "$DEST_DIR/dinkisstyle-ime"
+sudo chmod +x "$DEST_DIR/dkst-ime"
 sudo chmod +x "$DEST_DIR/setup.py"
-
-# Copy Icon (if exists, creating dummy if not for now)
-# sudo cp icon.png "$DEST_DIR/" 
 
 # Copy Component XML
 echo "Registering component..."
-sudo cp dinkisstyle.xml "$COMPONENT_DIR/"
+sudo cp dkst.xml "$COMPONENT_DIR/"
 
 # User Config
 echo "Setting up user configuration..."
 REAL_USER=${SUDO_USER:-$USER}
 USER_HOME=$(getent passwd "$REAL_USER" | cut -d: -f6)
-USER_CONFIG_DIR="$USER_HOME/.config/ibus-dinkisstyle"
+USER_CONFIG_DIR="$USER_HOME/.config/ibus-dkst"
 
-mkdir -p "$USER_CONFIG_DIR"
+sudo mkdir -p "$USER_CONFIG_DIR"
 if [ ! -f "$USER_CONFIG_DIR/config.ini" ]; then
-    cp config.ini "$USER_CONFIG_DIR/"
+    sudo cp config.ini "$USER_CONFIG_DIR/"
     echo "Created default config at $USER_CONFIG_DIR/config.ini"
 fi
 
 # Fix ownership
-chown -R "$REAL_USER":"$REAL_USER" "$USER_CONFIG_DIR"
+sudo chown -R "$REAL_USER":"$REAL_USER" "$USER_CONFIG_DIR"
 
 
 echo "Installation Complete."
 echo "Restarting IBus..."
 ibus restart
-echo "IBus restarted. Please add 'DINKIssTyle' from Input Method settings if not already added."
+echo "IBus restarted. Please add 'DKST' from Input Method settings if not already added."

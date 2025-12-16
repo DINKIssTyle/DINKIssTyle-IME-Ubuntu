@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<component>
+	<name>com.dkst.inputmethod</name>
+	<description>DKST Input Method</description>
+	<exec>/usr/share/ibus-dkst/dkst-ime</exec>
+	<setup>/usr/share/ibus-dkst/setup.py</setup>
+	<version>1.0</version>
+	<author>Dinki</author>
+	<license>GPL</license>
+	<homepage>http://dinkisstyle.com</homepage>
+	<textdomain>ibus-dkst</textdomain>
+
+	<engines>
+		<engine>
+			<name>dinkisstyle</name>
+			<longname>DKST</longname>
+			<description>DKST Korean Input Method</description>
+			<language>ko</language>
+			<license>GPL</license>
+			<author>Dinki</author>
+			<icon>/usr/share/ibus-dkst/icon.png</icon>
+			<setup>/usr/share/ibus-dkst/setup.py</setup>
+			<symbol>&#xD55C;</symbol>
+			<layout>us</layout>
+			<fallback-layout>us</fallback-layout>
+		</engine>
+	</engines>
+</component>

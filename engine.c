@@ -127,8 +127,8 @@ static void add_toggle_key(DkstEngine *engine, const gchar *keystr) {
 }
 
 static void load_config(DkstEngine *engine) {
-  gchar *config_path = g_build_filename(g_get_user_config_dir(),
-                                        "ibus-dinkisstyle", "config.ini", NULL);
+  gchar *config_path = g_build_filename(g_get_user_config_dir(), "ibus-dkst",
+                                        "config.ini", NULL);
   GKeyFile *key_file = g_key_file_new();
 
   // Clear existing toggle keys before loading
@@ -290,7 +290,7 @@ static void dkst_engine_property_activate(IBusEngine *e, const gchar *prop_name,
 
   if (g_strcmp0(prop_name, "Setup") == 0) {
     // Launch setup.py
-    gchar *argv[] = {"/usr/share/ibus-dinkisstyle/setup.py", NULL};
+    gchar *argv[] = {"/usr/share/ibus-dkst/setup.py", NULL};
     GError *error = NULL;
     g_spawn_async(NULL, argv, NULL, G_SPAWN_SEARCH_PATH, NULL, NULL, NULL,
                   &error);
@@ -475,8 +475,8 @@ static void init(void) {
   factory = ibus_factory_new(ibus_bus_get_connection(bus));
   ibus_factory_add_engine(factory, "dinkisstyle", DKST_TYPE_ENGINE);
 
-  if (ibus_bus_request_name(bus, "com.dinkisstyle.inputmethod", 0) == 0) {
-    g_warning("Failed to get name: com.dinkisstyle.inputmethod");
+  if (ibus_bus_request_name(bus, "com.dkst.inputmethod", 0) == 0) {
+    g_warning("Failed to get name: com.dkst.inputmethod");
     exit(1);
   }
 }

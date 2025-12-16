@@ -3,7 +3,7 @@ CC = gcc
 CFLAGS = -Wall -O2 `pkg-config --cflags ibus-1.0 glib-2.0`
 LIBS = `pkg-config --libs ibus-1.0 glib-2.0`
 
-TARGET = dinkisstyle-ime
+TARGET = dkst-ime
 OBJS = hangul.o engine.o
 
 all: $(TARGET)
