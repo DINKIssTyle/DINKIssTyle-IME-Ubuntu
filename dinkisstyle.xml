@@ -2,7 +2,7 @@
 <component>
 	<name>com.dinkisstyle.inputmethod</name>
 	<description>DINKIssTyle Input Method</description>
-	<exec>/usr/bin/python3 /usr/share/ibus-dinkisstyle/engine.py</exec>
+	<exec>/usr/share/ibus-dinkisstyle/dinkisstyle-ime</exec>
 	<version>1.0</version>
 	<author>Dinki</author>
 	<license>GPL</license>

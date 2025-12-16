@@ -14,8 +14,19 @@ fi
 
 # Copy Source Files
 echo "Copying scripts..."
-sudo cp engine.py hangul.py "$DEST_DIR/"
-sudo chmod +x "$DEST_DIR/engine.py"
+# Build with Make
+echo "Building..."
+if ! make; then
+    echo "Build failed!"
+    exit 1
+fi
+
+# Copy Binary
+echo "Copying binary..."
+echo "Stopping existing process if running..."
+sudo pkill -f dinkisstyle-ime || true
+sudo cp dinkisstyle-ime "$DEST_DIR/"
+sudo chmod +x "$DEST_DIR/dinkisstyle-ime"
 
 # Copy Icon (if exists, creating dummy if not for now)
 # sudo cp icon.png "$DEST_DIR/" 
@@ -33,4 +44,6 @@ if [ ! -f "$USER_CONFIG_DIR/config.json" ]; then
 fi
 
 echo "Installation Complete."
-echo "Please restart IBus (ibus restart) and add 'DINKIssTyle' from Input Method settings."
+echo "Restarting IBus..."
+ibus restart
+echo "IBus restarted. Please add 'DINKIssTyle' from Input Method settings if not already added."
