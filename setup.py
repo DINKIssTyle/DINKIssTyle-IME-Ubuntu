@@ -22,11 +22,60 @@ MACOS_KEYS = [
     ("z (ㅋ)", "Z"), ("x (ㅌ)", "X"), ("c (ㅊ)", "C"), ("v (ㅍ)", "V"), ("b (ㅠ)", "B"), ("n (ㅜ)", "N"), ("m (ㅡ)", "M")
 ]
 
+class KeyCaptureDialog(Gtk.Dialog):
+    def __init__(self, parent):
+        super().__init__(title="Input Key", transient_for=parent, flags=0)
+        self.add_buttons("Cancel", Gtk.ResponseType.CANCEL)
+        
+        self.set_default_size(300, 150)
+        self.captured_key = None
+        self.captured_mod = 0
+        
+        box = self.get_content_area()
+        self.label = Gtk.Label(label="Press any key combination...")
+        box.add(self.label)
+        
+        self.connect("key-press-event", self.on_key_press)
+        self.show_all()
+
+    def on_key_press(self, widget, event):
+        # Ignore standalone modifiers
+        if event.keyval in [
+            Gdk.KEY_Shift_L, Gdk.KEY_Shift_R, 
+            Gdk.KEY_Control_L, Gdk.KEY_Control_R,
+            Gdk.KEY_Alt_L, Gdk.KEY_Alt_R,
+            Gdk.KEY_Meta_L, Gdk.KEY_Meta_R,
+            Gdk.KEY_Super_L, Gdk.KEY_Super_R
+        ]:
+            return False
+            
+        # Modifiers
+        mods = []
+        if event.state & Gdk.ModifierType.SHIFT_MASK:
+            mods.append("Shift")
+        if event.state & Gdk.ModifierType.CONTROL_MASK:
+            mods.append("Control")
+        if event.state & Gdk.ModifierType.MOD1_MASK: # Alt
+            mods.append("Alt")
+        if event.state & Gdk.ModifierType.SUPER_MASK:
+            mods.append("Super")
+
+        key_name = Gdk.keyval_name(event.keyval)
+        
+        # Format: Modifier+Key
+        if mods:
+            self.captured_key = f"{'+'.join(mods)}+{key_name}"
+        else:
+            self.captured_key = key_name
+            
+        self.response(Gtk.ResponseType.OK)
+        return True
+
 class SettingsWindow(Gtk.Window):
     def __init__(self):
         super().__init__(title="DKST Settings")
         self.set_border_width(10)
-        self.set_default_size(500, 600)
+        self.set_default_size(500, 700)
         self.set_position(Gtk.WindowPosition.CENTER)
         self.set_modal(True)
 
@@ -59,7 +108,38 @@ class SettingsWindow(Gtk.Window):
         hbox_bs.pack_start(self.bs_char, False, False, 0)
         hbox_bs.pack_start(self.bs_jaso, False, False, 0)
 
-        # 2. Custom Shift Mappings Frame
+        # 2. Toggle Keys Frame
+        frame_toggle = Gtk.Frame(label="Hangul Toggle Keys (한영전환)")
+        main_vbox.pack_start(frame_toggle, False, False, 0)
+        
+        hbox_toggle = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        hbox_toggle.set_border_width(10)
+        frame_toggle.add(hbox_toggle)
+        
+        # List
+        self.toggle_store = Gtk.ListStore(str)
+        self.toggle_tree = Gtk.TreeView(model=self.toggle_store)
+        self.toggle_tree.append_column(Gtk.TreeViewColumn("Key", Gtk.CellRendererText(), text=0))
+        
+        scroll_toggle = Gtk.ScrolledWindow()
+        scroll_toggle.set_min_content_height(100)
+        scroll_toggle.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        scroll_toggle.add(self.toggle_tree)
+        hbox_toggle.pack_start(scroll_toggle, True, True, 0)
+        
+        # Buttons
+        vbox_toggle_btns = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5)
+        hbox_toggle.pack_start(vbox_toggle_btns, False, False, 0)
+        
+        btn_add_key = Gtk.Button(label="Add")
+        btn_add_key.connect("clicked", self.on_add_key)
+        vbox_toggle_btns.pack_start(btn_add_key, False, False, 0)
+        
+        btn_remove_key = Gtk.Button(label="Remove")
+        btn_remove_key.connect("clicked", self.on_remove_key)
+        vbox_toggle_btns.pack_start(btn_remove_key, False, False, 0)
+
+        # 3. Custom Shift Mappings Frame
         frame_custom = Gtk.Frame(label="Custom Shift Mappings")
         main_vbox.pack_start(frame_custom, True, True, 0)
         
@@ -124,6 +204,7 @@ class SettingsWindow(Gtk.Window):
         is_moa = False
         bs_mode = "JASO"
         is_custom = False
+        toggle_keys_str = "Shift+space;Hangul"
 
         if os.path.exists(CONFIG_FILE):
             try:
@@ -132,6 +213,9 @@ class SettingsWindow(Gtk.Window):
                     is_moa = self.config.getboolean("Settings", "EnableMoaJjiki", fallback=False)
                     bs_mode = self.config.get("Settings", "BackspaceMode", fallback="JASO")
                     is_custom = self.config.getboolean("Settings", "EnableCustomShift", fallback=False)
+                
+                if "ToggleKeys" in self.config and "Keys" in self.config["ToggleKeys"]:
+                    toggle_keys_str = self.config["ToggleKeys"]["Keys"]
                 
                 if "CustomShift" in self.config:
                     # Update store from config
@@ -150,6 +234,13 @@ class SettingsWindow(Gtk.Window):
             self.bs_jaso.set_active(True)
         self.check_custom.set_active(is_custom)
         self.tree.set_sensitive(is_custom)
+        
+        # Populate Toggle Keys
+        self.toggle_store.clear()
+        if toggle_keys_str:
+            for key in toggle_keys_str.split(";"):
+                if key.strip():
+                    self.toggle_store.append([key.strip()])
 
     def save_to_config(self):
         if "Settings" not in self.config:
@@ -159,6 +250,15 @@ class SettingsWindow(Gtk.Window):
         self.config["Settings"]["EnableMoaJjiki"] = "true" if self.check_moa.get_active() else "false"
         self.config["Settings"]["BackspaceMode"] = "CHAR" if self.bs_char.get_active() else "JASO"
         self.config["Settings"]["EnableCustomShift"] = "true" if self.check_custom.get_active() else "false"
+        
+        # Save Toggle Keys
+        if "ToggleKeys" not in self.config:
+            self.config["ToggleKeys"] = {}
+        
+        keys = []
+        for row in self.toggle_store:
+            keys.append(row[0])
+        self.config["ToggleKeys"]["Keys"] = ";".join(keys)
         
         # Save Mappings from Store
         if "CustomShift" in self.config:
@@ -175,6 +275,28 @@ class SettingsWindow(Gtk.Window):
             os.makedirs(CONFIG_DIR)
         with open(CONFIG_FILE, "w") as f:
             self.config.write(f)
+
+    def on_add_key(self, widget):
+        dlg = KeyCaptureDialog(self)
+        resp = dlg.run()
+        if resp == Gtk.ResponseType.OK:
+            key = dlg.captured_key
+            if key:
+                # Check for duplicate
+                exists = False
+                for row in self.toggle_store:
+                    if row[0] == key:
+                        exists = True
+                        break
+                if not exists:
+                    self.toggle_store.append([key])
+        dlg.destroy()
+
+    def on_remove_key(self, widget):
+        selection = self.toggle_tree.get_selection()
+        model, iter = selection.get_selected()
+        if iter:
+            model.remove(iter)
 
     def on_custom_toggled(self, widget):
         self.tree.set_sensitive(widget.get_active())

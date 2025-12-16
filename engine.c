@@ -2,6 +2,7 @@
 #include "hangul.h"
 #include <ibus.h>
 #include <stdio.h>
+#include <string.h>
 
 static void debug_log(const char *fmt, ...) {
   // Use a user-specific temp file to avoid permission issues
@@ -32,6 +33,11 @@ G_DEFINE_AUTOPTR_CLEANUP_FUNC(IBusEngine, g_object_unref)
 #define DKST_TYPE_ENGINE (dkst_engine_get_type())
 G_DECLARE_FINAL_TYPE(DkstEngine, dkst_engine, DKST, ENGINE, IBusEngine)
 
+typedef struct {
+  guint keyval;
+  guint modifiers;
+} ToggleKey;
+
 struct _DkstEngine {
   IBusEngine parent;
 
@@ -43,6 +49,9 @@ struct _DkstEngine {
   GHashTable *shift_mappings;
   gboolean enable_custom_shift;
   gboolean enable_moa_jjiki;
+
+  // Toggle Keys
+  GList *toggle_keys;
 };
 
 G_DEFINE_TYPE(DkstEngine, dkst_engine, IBUS_TYPE_ENGINE)
@@ -56,7 +65,11 @@ static void dkst_engine_init(DkstEngine *engine) {
       g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
   engine->enable_custom_shift = FALSE;
   engine->enable_moa_jjiki = TRUE;
+
+  engine->toggle_keys = NULL;
 }
+
+static void free_toggle_key(gpointer data) { g_free(data); }
 
 static void dkst_engine_finalize(GObject *object) {
   DkstEngine *engine = (DkstEngine *)object;
@@ -66,13 +79,63 @@ static void dkst_engine_finalize(GObject *object) {
     g_hash_table_destroy(engine->shift_mappings);
   }
 
+  if (engine->toggle_keys) {
+    g_list_free_full(engine->toggle_keys, free_toggle_key);
+    engine->toggle_keys = NULL;
+  }
+
   G_OBJECT_CLASS(dkst_engine_parent_class)->finalize(object);
+}
+
+// Helper to parse key string like "Shift+space"
+static void add_toggle_key(DkstEngine *engine, const gchar *keystr) {
+  guint keyval = 0;
+  guint modifiers = 0;
+
+  // Split by '+'
+  gchar **parts = g_strsplit(keystr, "+", -1);
+  guint len = g_strv_length(parts);
+
+  if (len > 0) {
+    // Last part is key name
+    keyval = ibus_keyval_from_name(parts[len - 1]);
+
+    // Previous parts are modifiers
+    for (guint i = 0; i < len - 1; i++) {
+      if (g_ascii_strcasecmp(parts[i], "Shift") == 0)
+        modifiers |= IBUS_SHIFT_MASK;
+      else if (g_ascii_strcasecmp(parts[i], "Control") == 0)
+        modifiers |= IBUS_CONTROL_MASK;
+      else if (g_ascii_strcasecmp(parts[i], "Alt") == 0)
+        modifiers |= IBUS_MOD1_MASK; // Alt is usually Mod1
+      else if (g_ascii_strcasecmp(parts[i], "Super") == 0)
+        modifiers |= IBUS_SUPER_MASK;
+      else if (g_ascii_strcasecmp(parts[i], "Meta") == 0)
+        modifiers |= IBUS_META_MASK;
+    }
+  }
+  g_strfreev(parts);
+
+  if (keyval != 0) {
+    ToggleKey *tk = g_new(ToggleKey, 1);
+    tk->keyval = keyval;
+    tk->modifiers = modifiers;
+    engine->toggle_keys = g_list_append(engine->toggle_keys, tk);
+    debug_log("Added Toggle Key: Val=%x Mods=%x (from %s)\n", keyval, modifiers,
+              keystr);
+  }
 }
 
 static void load_config(DkstEngine *engine) {
   gchar *config_path = g_build_filename(g_get_user_config_dir(),
                                         "ibus-dinkisstyle", "config.ini", NULL);
   GKeyFile *key_file = g_key_file_new();
+
+  // Clear existing toggle keys before loading
+  if (engine->toggle_keys) {
+    g_list_free_full(engine->toggle_keys, free_toggle_key);
+    engine->toggle_keys = NULL;
+  }
 
   if (g_key_file_load_from_file(key_file, config_path, G_KEY_FILE_NONE, NULL)) {
     // Moa-jjik-gi
@@ -100,6 +163,22 @@ static void load_config(DkstEngine *engine) {
           key_file, "Settings", "EnableCustomShift", NULL);
     }
 
+    // Toggle Keys
+    if (g_key_file_has_key(key_file, "ToggleKeys", "Keys", NULL)) {
+      gchar *keys_str =
+          g_key_file_get_string(key_file, "ToggleKeys", "Keys", NULL);
+      if (keys_str) {
+        gchar **keys = g_strsplit(keys_str, ";", -1);
+        for (int i = 0; keys[i] != NULL; i++) {
+          if (strlen(keys[i]) > 0) {
+            add_toggle_key(engine, keys[i]);
+          }
+        }
+        g_strfreev(keys);
+        g_free(keys_str);
+      }
+    }
+
     // Load Mappings
     g_hash_table_remove_all(engine->shift_mappings);
     if (engine->enable_custom_shift) {
@@ -121,6 +200,12 @@ static void load_config(DkstEngine *engine) {
     debug_log("Config Loaded: Moa=%d, Backspace=%d, Shift=%d\n",
               engine->enable_moa_jjiki, engine->hangul.backspace_mode,
               engine->enable_custom_shift);
+  }
+
+  // Fallback if no toggle keys loaded? Add defaults.
+  if (engine->toggle_keys == NULL) {
+    add_toggle_key(engine, "Shift+space");
+    add_toggle_key(engine, "Hangul");
   }
 
   g_key_file_free(key_file);
@@ -227,7 +312,31 @@ static gboolean dkst_engine_process_key_event(IBusEngine *e, guint keyval,
   if (state & IBUS_RELEASE_MASK)
     return FALSE;
 
-  // Check for Modifier Keys itself being pressed (not just holding modifier)
+  // Check against toggle keys
+  // For each registered toggle key, check if keyval and modifiers (excluding
+  // Locks) match Relevant modifiers for comparison: Shift, Control, Alt, Super,
+  // Meta
+  guint mask = IBUS_SHIFT_MASK | IBUS_CONTROL_MASK | IBUS_MOD1_MASK |
+               IBUS_SUPER_MASK | IBUS_META_MASK;
+  guint current_mods = state & mask;
+
+  if (engine->toggle_keys) {
+    GList *l;
+    for (l = engine->toggle_keys; l != NULL; l = l->next) {
+      ToggleKey *tk = (ToggleKey *)l->data;
+
+      if (keyval == tk->keyval && current_mods == tk->modifiers) {
+        debug_log("Toggle Key Matched! Toggling mode.\n");
+        commit_full(engine);
+        engine->is_hangul_mode = !engine->is_hangul_mode;
+        update_preedit(engine);
+        return TRUE;
+      }
+    }
+  }
+
+  // Check for Modifier Keys themselves being pressed (not just holding
+  // modifier)
   switch (keyval) {
   case IBUS_KEY_Shift_L:
   case IBUS_KEY_Shift_R:
@@ -257,28 +366,6 @@ static gboolean dkst_engine_process_key_event(IBusEngine *e, guint keyval,
     }
   }
 
-  // Modifier check
-  // Exception: Shift+Space for mode toggle
-  gboolean is_space = (keyval == IBUS_KEY_space);
-
-  // Check for Shift+Space
-  if (is_shift && is_space) {
-    debug_log("Shift+Space Detected. Toggling mode.\n");
-    commit_full(engine); // Commit any pending composition before switching
-    engine->is_hangul_mode = !engine->is_hangul_mode;
-    update_preedit(engine);
-    return TRUE; // Consume event
-  }
-
-  // Also support Hangul key
-  if (keyval == IBUS_KEY_Hangul) {
-    debug_log("Hangul Key Detected. Toggling mode.\n");
-    commit_full(engine);
-    engine->is_hangul_mode = !engine->is_hangul_mode;
-    update_preedit(engine);
-    return TRUE;
-  }
-
   // Allow only Shift to pass through for typing (e.g. upper case)
   // But if Ctrl/Alt/Super are pressed, ignore.
   if (state & (IBUS_CONTROL_MASK | IBUS_MOD1_MASK | IBUS_SUPER_MASK)) {
@@ -291,7 +378,7 @@ static gboolean dkst_engine_process_key_event(IBusEngine *e, guint keyval,
 
   // English Mode Pass-through
   if (!engine->is_hangul_mode) {
-    debug_log("English Mode. Pass.\n");
+    // debug_log("English Mode. Pass.\n");
     return FALSE;
   }
 
