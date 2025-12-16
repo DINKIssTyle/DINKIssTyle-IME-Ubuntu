@@ -5,11 +5,8 @@
 #include <string.h>
 
 static void debug_log(const char *fmt, ...) {
-  // Use a user-specific temp file to avoid permission issues
-  char log_path[256];
-  const char *user = g_get_user_name();
-  snprintf(log_path, sizeof(log_path), "/tmp/dkst_debug_%s.log",
-           user ? user : "default");
+  // Simple fixed path to avoid complexity and segfaults
+  const char *log_path = "/tmp/dkst_debug.log";
 
   FILE *f = fopen(log_path, "a");
   if (f) {
@@ -19,7 +16,7 @@ static void debug_log(const char *fmt, ...) {
     va_end(args);
     fclose(f);
   } else {
-    // Fallback to stderr if file cannot be opened
+    // Fallback to stderr
     va_list args;
     va_start(args, fmt);
     vfprintf(stderr, fmt, args);
@@ -221,8 +218,11 @@ static void update_preedit(DkstEngine *engine) {
     ibus_text_append_attribute(text, IBUS_ATTR_TYPE_UNDERLINE,
                                IBUS_ATTR_UNDERLINE_SINGLE, 0,
                                ibus_text_get_length(text));
-    ibus_engine_update_preedit_text((IBusEngine *)engine, text,
-                                    ibus_text_get_length(text), TRUE);
+    // Use PREEDIT_COMMIT mode to ensure text stays at original position if
+    // committed automatically
+    ibus_engine_update_preedit_text_with_mode((IBusEngine *)engine, text,
+                                              ibus_text_get_length(text), TRUE,
+                                              IBUS_ENGINE_PREEDIT_COMMIT);
   } else {
     ibus_engine_hide_preedit_text((IBusEngine *)engine);
   }
@@ -251,13 +251,32 @@ static void commit_full(DkstEngine *engine) {
     g_string_append_unichar(full, syl);
   }
 
+  // Use PREEDIT_COMMIT mode to commit text at the PREEDIT position (original
+  // cursor) This prevents the text from jumping to a new cursor position (e.g.
+  // on mouse click)
+  // Use ibus_engine_commit_text for explicit commits (Space, Enter, etc.)
+  // PREEDIT_COMMIT mode in update_preedit handles the focus_out case
+  // automatically.
   if (full->len > 0) {
-    commit_string(engine, full->str);
+    IBusText *text = ibus_text_new_from_string(full->str);
+    ibus_engine_commit_text((IBusEngine *)engine, text);
+    // Note: commit_text takes ownership of text or refcounts?
+    // Usually we unref if we created it? IBus docs say: "text: An IBusText to
+    // be committed." Most examples show just passing it. IBus bindings usually
+    // handle ref/sink. Actually ibus_engine_commit_text usually consumes the
+    // text object float ref. But checking ibus-hangul: text = ...;
+    // ibus_engine_commit_text(...); It does not free 'text' manually if IBus
+    // takes it. g_object_ref_sink logic usually applies.
   }
-  g_string_free(full, TRUE);
 
+  // Reset internal state
   dkst_hangul_reset(&engine->hangul);
-  ibus_engine_hide_preedit_text((IBusEngine *)engine);
+  // Ensure visual preedit is cleared/updated to match empty state
+  update_preedit(engine);
+
+  debug_log("commit_full: Committed '%s', reset state.\n", full->str);
+
+  g_string_free(full, TRUE);
 }
 
 static void check_and_commit_pending(DkstEngine *engine) {
@@ -425,6 +444,16 @@ static gboolean dkst_engine_process_key_event(IBusEngine *e, guint keyval,
 
 static void dkst_engine_focus_in(IBusEngine *e) {
   DkstEngine *engine = (DkstEngine *)e;
+  debug_log("Focus In\n");
+
+  // Safety: Ensure no leftover state from previous interactions
+  if (dkst_hangul_has_composed(&engine->hangul)) {
+    debug_log("Focus In: Cleansing leftover state. (Cho=%x Jung=%x Jong=%x)\n",
+              engine->hangul.cho, engine->hangul.jung, engine->hangul.jong);
+    dkst_hangul_reset(&engine->hangul);
+    ibus_engine_hide_preedit_text(e);
+  }
+
   // Refresh config on focus in
   load_config(engine);
   // Register Properties
@@ -433,13 +462,37 @@ static void dkst_engine_focus_in(IBusEngine *e) {
 
 static void dkst_engine_focus_out(IBusEngine *e) {
   DkstEngine *engine = (DkstEngine *)e;
-  commit_full(engine);
+  debug_log("Focus Out: Starting... (Hangul Mode: %d)\n",
+            engine->is_hangul_mode);
+
+  if (dkst_hangul_has_composed(&engine->hangul)) {
+    debug_log("Focus Out: Has composed text. Resetting internal state "
+              "(auto-commit expected).\n");
+    // Do NOT commit manually here. ibus_engine_update_preedit_text_with_mode
+    // (used in update_preedit) handles the commit at the correct position
+    // automatically.
+    dkst_hangul_reset(&engine->hangul);
+    // Clearing the preedit buffer logic:
+    // ibus-hangul does: hangul_ic_reset + ustring_clear
+    // We just reset our hangul state.
+  } else {
+    debug_log("Focus Out: No composed text.\n");
+  }
+  debug_log("Focus Out: Finished.\n");
 }
 
 static void dkst_engine_reset(IBusEngine *e) {
   DkstEngine *engine = (DkstEngine *)e;
-  commit_full(engine);
+  debug_log("Reset: Starting...\n");
+  // Similarly, reset signal should rely on PREEDIT_COMMIT auto-behavior
   dkst_hangul_reset(&engine->hangul);
+  debug_log("Reset: Finished.\n");
+}
+
+static void dkst_engine_disable(IBusEngine *e) {
+  DkstEngine *engine = (DkstEngine *)e;
+  debug_log("Disable\n");
+  commit_full(engine);
 }
 
 static void dkst_engine_class_init(DkstEngineClass *klass) {
@@ -452,6 +505,7 @@ static void dkst_engine_class_init(DkstEngineClass *klass) {
   engine_class->focus_in = dkst_engine_focus_in;
   engine_class->focus_out = dkst_engine_focus_out;
   engine_class->reset = dkst_engine_reset;
+  engine_class->disable = dkst_engine_disable;
 
   // Register property activate handler
   engine_class->property_activate = dkst_engine_property_activate;
