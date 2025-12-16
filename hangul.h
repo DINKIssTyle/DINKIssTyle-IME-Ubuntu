@@ -2,17 +2,21 @@
 #ifndef HANGUL_H
 #define HANGUL_H
 
-#include <stdint.h>
-#include <stdbool.h>
 #include <glib.h>
+#include <stdbool.h>
+#include <stdint.h>
+
+typedef enum { DKST_BACKSPACE_JASO, DKST_BACKSPACE_CHAR } DKSTBackspaceMode;
 
 typedef struct {
-    uint32_t cho;
-    uint32_t jung;
-    uint32_t jong;
-    GString *buffer;    // Internal buffer for raw keys if needed, though we track state mostly
-    GString *completed; // Queue of completed characters to commit
-    bool moa_jjiki_enabled;
+  uint32_t cho;
+  uint32_t jung;
+  uint32_t jong;
+  GString *buffer;    // Internal buffer for raw keys if needed, though we track
+                      // state mostly
+  GString *completed; // Queue of completed characters to commit
+  bool moa_jjiki_enabled;
+  DKSTBackspaceMode backspace_mode;
 } DKSTHangul;
 
 // Initialize
@@ -31,7 +35,7 @@ bool dkst_hangul_process(DKSTHangul *h, char key);
 uint32_t dkst_hangul_current_syllable(DKSTHangul *h);
 
 // Get pending committed string (caller must free)
-char* dkst_hangul_get_commit_string(DKSTHangul *h);
+char *dkst_hangul_get_commit_string(DKSTHangul *h);
 
 // Backspace handling. Returns true if state changed.
 bool dkst_hangul_backspace(DKSTHangul *h);

@@ -39,6 +39,11 @@ struct _DkstEngine {
   DKSTHangul hangul;
   IBusLookupTable *table;
   gboolean is_hangul_mode;
+
+  // Settings
+  GHashTable *shift_mappings;
+  gboolean enable_custom_shift;
+  gboolean enable_moa_jjiki;
 };
 
 G_DEFINE_TYPE(DkstEngine, dkst_engine, IBUS_TYPE_ENGINE)
@@ -47,15 +52,85 @@ static void dkst_engine_init(DkstEngine *engine) {
   dkst_hangul_init(&engine->hangul);
   engine->table = ibus_lookup_table_new(10, 0, TRUE, TRUE);
   engine->is_hangul_mode = TRUE;
-  // Config loading could go here (e.g. gsettings)
+
+  engine->shift_mappings =
+      g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
+  engine->enable_custom_shift = FALSE;
+  engine->enable_moa_jjiki = TRUE;
 }
 
 static void dkst_engine_finalize(GObject *object) {
   DkstEngine *engine = (DkstEngine *)object;
   dkst_hangul_free(&engine->hangul);
-  // g_object_unref(engine->table); // IBus might handle this? check docs.
-  // explicit unref is safer usually.
+
+  if (engine->shift_mappings) {
+    g_hash_table_destroy(engine->shift_mappings);
+  }
+
   G_OBJECT_CLASS(dkst_engine_parent_class)->finalize(object);
+}
+
+static void load_config(DkstEngine *engine) {
+  gchar *config_path = g_build_filename(g_get_user_config_dir(),
+                                        "ibus-dinkisstyle", "config.ini", NULL);
+  GKeyFile *key_file = g_key_file_new();
+
+  if (g_key_file_load_from_file(key_file, config_path, G_KEY_FILE_NONE, NULL)) {
+    // Moa-jjik-gi
+    if (g_key_file_has_key(key_file, "Settings", "EnableMoaJjiki", NULL)) {
+      engine->enable_moa_jjiki =
+          g_key_file_get_boolean(key_file, "Settings", "EnableMoaJjiki", NULL);
+      engine->hangul.moa_jjiki_enabled = engine->enable_moa_jjiki;
+    }
+
+    // Backspace Mode
+    if (g_key_file_has_key(key_file, "Settings", "BackspaceMode", NULL)) {
+      gchar *mode_str =
+          g_key_file_get_string(key_file, "Settings", "BackspaceMode", NULL);
+      if (g_strcmp0(mode_str, "CHAR") == 0) {
+        engine->hangul.backspace_mode = DKST_BACKSPACE_CHAR;
+      } else {
+        engine->hangul.backspace_mode = DKST_BACKSPACE_JASO;
+      }
+      g_free(mode_str);
+    }
+
+    // Custom Shift
+    if (g_key_file_has_key(key_file, "Settings", "EnableCustomShift", NULL)) {
+      engine->enable_custom_shift = g_key_file_get_boolean(
+          key_file, "Settings", "EnableCustomShift", NULL);
+    }
+
+    // Load Mappings
+    g_hash_table_remove_all(engine->shift_mappings);
+    if (engine->enable_custom_shift) {
+      gsize length = 0;
+      gchar **keys =
+          g_key_file_get_keys(key_file, "CustomShift", &length, NULL);
+      if (keys) {
+        for (gsize i = 0; i < length; i++) {
+          gchar *val =
+              g_key_file_get_string(key_file, "CustomShift", keys[i], NULL);
+          if (val) {
+            g_hash_table_insert(
+                engine->shift_mappings, g_strdup(keys[i]),
+                val); // val is adopted/freed by hashtable? No,
+                      // g_key_file_get_string returns newly allocated.
+                      // Hashtable takes ownership if destroy func set.
+                      // I set g_free for value destroy func.
+          }
+        }
+        g_strfreev(keys);
+      }
+    }
+
+    debug_log("Config Loaded: Moa=%d, Backspace=%d, Shift=%d\n",
+              engine->enable_moa_jjiki, engine->hangul.backspace_mode,
+              engine->enable_custom_shift);
+  }
+
+  g_key_file_free(key_file);
+  g_free(config_path);
 }
 
 // Helper to update preedit text
@@ -143,9 +218,31 @@ static gboolean dkst_engine_process_key_event(IBusEngine *e, guint keyval,
     return FALSE;
   }
 
+  // Custom Shift Handling
+  gboolean is_shift = (state & IBUS_SHIFT_MASK) != 0;
+  if (engine->enable_custom_shift && is_shift && engine->is_hangul_mode) {
+    // Convert keycode/keyval to string key
+    // We use keyval names e.g. "Q", "W"
+    // Or we can map specific keys.
+    // Let's use gdk_keyval_name or similar if available, or just simple char
+    // mapping Since we are in engine.c, we have keyval. Assume mapping file
+    // uses "Q", "W", "A", etc.
+
+    const gchar *key_name = ibus_keyval_name(keyval);
+    if (key_name) {
+      gchar *mapped = g_hash_table_lookup(engine->shift_mappings, key_name);
+      if (mapped) {
+        commit_full(engine);
+        commit_string(engine, mapped);
+        return TRUE;
+      }
+    }
+  }
+
   // Modifier check
   // Exception: Shift+Space for mode toggle
-  gboolean is_shift = (state & IBUS_SHIFT_MASK) != 0;
+  // gboolean is_shift = (state & IBUS_SHIFT_MASK) != 0; // Already declared
+  // above
   gboolean is_space = (keyval == IBUS_KEY_space);
 
   // Check for Shift+Space
@@ -240,7 +337,8 @@ static gboolean dkst_engine_process_key_event(IBusEngine *e, guint keyval,
 }
 
 static void dkst_engine_focus_in(IBusEngine *engine) {
-  // ibus_engine_register_properties(engine, props);
+  // Refresh config on focus in
+  load_config((DkstEngine *)engine);
 }
 
 static void dkst_engine_focus_out(IBusEngine *e) {

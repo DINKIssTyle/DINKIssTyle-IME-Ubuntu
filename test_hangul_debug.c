@@ -83,6 +83,34 @@ int main() {
   bool consumed = dkst_hangul_process(&h, ' ');
   printf("Consumed=%d\n", consumed);
 
+  // Test Backspace JASO Mode
+  h.backspace_mode = DKST_BACKSPACE_JASO;
+  dkst_hangul_reset(&h);
+  dkst_hangul_process(&h, 'r'); // ㄱ
+  dkst_hangul_process(&h, 'k'); // ㅏ
+  dkst_hangul_process(&h, 'r'); // ㄱ
+  // State: 각 (Cho+Jung+Jong)
+  printf("Before BS (JASO): %x (Expected syllables)\n",
+         dkst_hangul_current_syllable(&h));
+
+  dkst_hangul_backspace(&h);
+  // State: 가 (Cho+Jung)
+  printf("After BS (JASO): %x (Expected '가' AC00)\n",
+         dkst_hangul_current_syllable(&h));
+
+  // Test Backspace CHAR Mode
+  h.backspace_mode = DKST_BACKSPACE_CHAR;
+  dkst_hangul_reset(&h);
+  dkst_hangul_process(&h, 'r'); // ㄱ
+  dkst_hangul_process(&h, 'k'); // ㅏ
+  dkst_hangul_process(&h, 'r'); // ㄱ
+  // State: 각
+
+  dkst_hangul_backspace(&h);
+  // State: Empty
+  printf("After BS (CHAR): %x (Expected 0)\n",
+         dkst_hangul_current_syllable(&h));
+
   dkst_hangul_free(&h);
   return 0;
 }

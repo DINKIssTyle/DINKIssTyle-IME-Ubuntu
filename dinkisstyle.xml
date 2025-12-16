@@ -3,6 +3,7 @@
 	<name>com.dinkisstyle.inputmethod</name>
 	<description>DINKIssTyle Input Method</description>
 	<exec>/usr/share/ibus-dinkisstyle/dinkisstyle-ime</exec>
+	<setup>/usr/share/ibus-dinkisstyle/setup.py</setup>
 	<version>1.0</version>
 	<author>Dinki</author>
 	<license>GPL</license>
@@ -12,12 +13,14 @@
 	<engines>
 		<engine>
 			<name>dinkisstyle</name>
-			<longname>DINKIssTyle</longname>
-			<description>DINKIssTyle Korean Input Method</description>
+			<longname>DKST</longname>
+			<description>DKST Korean Input Method</description>
 			<language>ko</language>
 			<license>GPL</license>
 			<author>Dinki</author>
 			<icon>/usr/share/ibus-dinkisstyle/icon.png</icon>
+			<setup>/usr/share/ibus-dinkisstyle/setup.py</setup>
+			<symbol>&#xD55C;</symbol>
 			<layout>us</layout>
 			<fallback-layout>us</fallback-layout>
 		</engine>
