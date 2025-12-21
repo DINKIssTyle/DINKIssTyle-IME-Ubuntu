@@ -97,6 +97,10 @@ class SettingsWindow(Gtk.Window):
         # Moa-jjiki
         self.check_moa = Gtk.CheckButton(label="Enable Moa-jjiki (Combine Consonant+Vowel)")
         vbox_gen.pack_start(self.check_moa, False, False, 0)
+
+        # Indicator
+        self.check_indicator = Gtk.CheckButton(label="Show Language Indicator (한/EN)")
+        vbox_gen.pack_start(self.check_indicator, False, False, 0)
         
         # Backspace Mode
         hbox_bs = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
@@ -202,6 +206,7 @@ class SettingsWindow(Gtk.Window):
     def load_config(self):
         # Default initialization
         is_moa = False
+        is_indicator = True
         bs_mode = "JASO"
         is_custom = False
         toggle_keys_str = "Shift+space;Hangul"
@@ -211,6 +216,7 @@ class SettingsWindow(Gtk.Window):
                 self.config.read(CONFIG_FILE)
                 if "Settings" in self.config:
                     is_moa = self.config.getboolean("Settings", "EnableMoaJjiki", fallback=False)
+                    is_indicator = self.config.getboolean("Settings", "EnableIndicator", fallback=True)
                     bs_mode = self.config.get("Settings", "BackspaceMode", fallback="JASO")
                     is_custom = self.config.getboolean("Settings", "EnableCustomShift", fallback=False)
                 
@@ -228,6 +234,7 @@ class SettingsWindow(Gtk.Window):
 
         # Set UI state
         self.check_moa.set_active(is_moa)
+        self.check_indicator.set_active(is_indicator)
         if bs_mode == "CHAR":
             self.bs_char.set_active(True)
         else:
@@ -248,6 +255,7 @@ class SettingsWindow(Gtk.Window):
             
         # Use lowercase strings for GLib compatibility
         self.config["Settings"]["EnableMoaJjiki"] = "true" if self.check_moa.get_active() else "false"
+        self.config["Settings"]["EnableIndicator"] = "true" if self.check_indicator.get_active() else "false"
         self.config["Settings"]["BackspaceMode"] = "CHAR" if self.bs_char.get_active() else "JASO"
         self.config["Settings"]["EnableCustomShift"] = "true" if self.check_custom.get_active() else "false"
         

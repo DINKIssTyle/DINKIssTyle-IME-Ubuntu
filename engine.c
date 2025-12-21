@@ -33,6 +33,11 @@ struct _DkstEngine {
 
   // Toggle Keys
   GList *toggle_keys;
+
+  // Indicator
+  guint indicator_timeout_id;
+  gboolean showing_indicator;
+  gboolean enable_indicator;
 };
 
 G_DEFINE_TYPE(DkstEngine, dkst_engine, IBUS_TYPE_ENGINE)
@@ -48,12 +53,22 @@ static void dkst_engine_init(DkstEngine *engine) {
   engine->enable_moa_jjiki = TRUE;
 
   engine->toggle_keys = NULL;
+
+  engine->indicator_timeout_id = 0;
+  engine->showing_indicator = FALSE;
+  engine->enable_indicator = TRUE;
 }
 
 static void free_toggle_key(gpointer data) { g_free(data); }
 
 static void dkst_engine_finalize(GObject *object) {
   DkstEngine *engine = (DkstEngine *)object;
+
+  if (engine->indicator_timeout_id > 0) {
+    g_source_remove(engine->indicator_timeout_id);
+    engine->indicator_timeout_id = 0;
+  }
+
   dkst_hangul_free(&engine->hangul);
 
   if (engine->shift_mappings) {
@@ -138,6 +153,12 @@ static void load_config(DkstEngine *engine) {
       g_free(mode_str);
     }
 
+    // Indicator
+    if (g_key_file_has_key(key_file, "Settings", "EnableIndicator", NULL)) {
+      engine->enable_indicator =
+          g_key_file_get_boolean(key_file, "Settings", "EnableIndicator", NULL);
+    }
+
     // Custom Shift
     if (g_key_file_has_key(key_file, "Settings", "EnableCustomShift", NULL)) {
       engine->enable_custom_shift = g_key_file_get_boolean(
@@ -215,9 +236,59 @@ static void update_preedit(DkstEngine *engine) {
     ibus_engine_update_preedit_text_with_mode((IBusEngine *)engine, text,
                                               ibus_text_get_length(text), TRUE,
                                               IBUS_ENGINE_PREEDIT_COMMIT);
+  } else if (engine->showing_indicator) {
+    // Show "한" or "EN"
+    const char *indicator_str = engine->is_hangul_mode ? "한" : "EN";
+    IBusText *text = ibus_text_new_from_string(indicator_str);
+    ibus_text_set_attributes(text, ibus_attr_list_new());
+    // Use a different color or style for indicator?
+    // Maybe just underline for now to be safe.
+    // ibus_text_append_attribute(text, IBUS_ATTR_TYPE_FOREGROUND, 0x0000FF00,
+    // 0,
+    //                            ibus_text_get_length(text)); // Green?
+
+    ibus_engine_update_preedit_text_with_mode((IBusEngine *)engine, text,
+                                              ibus_text_get_length(text), TRUE,
+                                              IBUS_ENGINE_PREEDIT_COMMIT);
   } else {
     ibus_engine_hide_preedit_text((IBusEngine *)engine);
   }
+}
+
+static void clear_indicator(DkstEngine *engine) {
+  if (engine->indicator_timeout_id > 0) {
+    g_source_remove(engine->indicator_timeout_id);
+    engine->indicator_timeout_id = 0;
+  }
+  if (engine->showing_indicator) {
+    engine->showing_indicator = FALSE;
+    // Don't call update_preedit here immediately if we are inside
+    // process_key_event usually update_preedit is called at end of
+    // process_key_event anyway. But if called efficiently? Let's just update.
+    update_preedit(engine);
+  }
+}
+
+static gboolean on_indicator_timeout(gpointer data) {
+  DkstEngine *engine = (DkstEngine *)data;
+  engine->indicator_timeout_id = 0;
+  engine->showing_indicator = FALSE;
+  update_preedit(engine);
+  return G_SOURCE_REMOVE;
+}
+
+static void show_indicator(DkstEngine *engine) {
+  if (!engine->enable_indicator)
+    return;
+
+  if (engine->indicator_timeout_id > 0) {
+    g_source_remove(engine->indicator_timeout_id);
+  }
+  engine->showing_indicator = TRUE;
+  // 1 second timeout
+  engine->indicator_timeout_id =
+      g_timeout_add(1000, on_indicator_timeout, engine);
+  update_preedit(engine);
 }
 
 static void commit_string(DkstEngine *engine, const char *str) {
@@ -337,11 +408,14 @@ static gboolean dkst_engine_process_key_event(IBusEngine *e, guint keyval,
       ToggleKey *tk = (ToggleKey *)l->data;
 
       if (keyval == tk->keyval && current_mods == tk->modifiers) {
-        debug_log("Toggle Key Matched! Toggling mode.\n");
-        commit_full(engine);
-        engine->is_hangul_mode = !engine->is_hangul_mode;
-        update_preedit(engine);
-        return TRUE;
+        if (keyval == tk->keyval && current_mods == tk->modifiers) {
+          debug_log("Toggle Key Matched! Toggling mode.\n");
+          commit_full(engine);
+          engine->is_hangul_mode = !engine->is_hangul_mode;
+          // update_preedit(engine); // Called inside show_indicator
+          show_indicator(engine);
+          return TRUE;
+        }
       }
     }
   }
@@ -370,6 +444,7 @@ static gboolean dkst_engine_process_key_event(IBusEngine *e, guint keyval,
     if (key_name) {
       gchar *mapped = g_hash_table_lookup(engine->shift_mappings, key_name);
       if (mapped) {
+        clear_indicator(engine); // Clear if typing
         commit_full(engine);
         commit_string(engine, mapped);
         return TRUE;
@@ -394,7 +469,10 @@ static gboolean dkst_engine_process_key_event(IBusEngine *e, guint keyval,
   }
 
   // Backspace
+  // Backspace
   if (keyval == IBUS_KEY_BackSpace) {
+    if (engine->showing_indicator)
+      clear_indicator(engine); // Clear on backspace too
     if (dkst_hangul_backspace(&engine->hangul)) {
       update_preedit(engine);
       return TRUE;
@@ -404,12 +482,16 @@ static gboolean dkst_engine_process_key_event(IBusEngine *e, guint keyval,
 
   // Space/Enter -> Commit
   if (keyval == IBUS_KEY_space || keyval == IBUS_KEY_Return) {
+    if (engine->showing_indicator)
+      clear_indicator(engine);
     commit_full(engine); // Commit everything
     return FALSE;        // Let system handle space
   }
 
   // Printable char
   if (keyval >= 32 && keyval <= 126) {
+    if (engine->showing_indicator)
+      clear_indicator(engine);
     char c = (char)keyval;
     if (dkst_hangul_process(&engine->hangul, c)) {
       check_and_commit_pending(engine);
@@ -443,8 +525,12 @@ static void dkst_engine_focus_in(IBusEngine *e) {
     debug_log("Focus In: Cleansing leftover state. (Cho=%x Jung=%x Jong=%x)\n",
               engine->hangul.cho, engine->hangul.jung, engine->hangul.jong);
     dkst_hangul_reset(&engine->hangul);
+    dkst_hangul_reset(&engine->hangul);
     ibus_engine_hide_preedit_text(e);
   }
+
+  // Also clear indicator on focus in, just in case
+  clear_indicator(engine);
 
   // Refresh config on focus in
   load_config(engine);
@@ -470,6 +556,9 @@ static void dkst_engine_focus_out(IBusEngine *e) {
   } else {
     debug_log("Focus Out: No composed text.\n");
   }
+
+  // Clear indicator on focus out
+  clear_indicator(engine);
   debug_log("Focus Out: Finished.\n");
 }
 
