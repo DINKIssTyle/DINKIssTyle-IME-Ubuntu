@@ -6,7 +6,7 @@ import sys
 import signal
 
 gi.require_version("Gtk", "3.0")
-from gi.repository import Gtk, Gdk
+from gi.repository import Gtk, Gdk, GdkPixbuf
 
 CONFIG_DIR = os.path.expanduser("~/.config/ibus-dkst")
 CONFIG_FILE = os.path.join(CONFIG_DIR, "config.ini")
@@ -184,10 +184,19 @@ class SettingsWindow(Gtk.Window):
         scroll.add(self.tree)
         vbox_custom.pack_start(scroll, True, True, 0)
 
-        # Buttons
+        # Buttons Area
+        hbox_bottom = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        main_vbox.pack_start(hbox_bottom, False, False, 0)
+
+        # About Button (Left)
+        btn_about = Gtk.Button(label="About")
+        btn_about.connect("clicked", self.on_about_clicked)
+        hbox_bottom.pack_start(btn_about, False, False, 0)
+
+        # Action Buttons (Right)
         bbox = Gtk.ButtonBox(orientation=Gtk.Orientation.HORIZONTAL)
         bbox.set_layout(Gtk.ButtonBoxStyle.END)
-        main_vbox.pack_start(bbox, False, False, 0)
+        hbox_bottom.pack_end(bbox, True, True, 0)
         
         btn_cancel = Gtk.Button(label="Cancel")
         btn_cancel.connect("clicked", Gtk.main_quit)
@@ -318,6 +327,47 @@ class SettingsWindow(Gtk.Window):
     def on_ok(self, widget):
         self.save_to_config()
         Gtk.main_quit()
+
+    def on_about_clicked(self, widget):
+        dlg = Gtk.Dialog(title="DKST 정보", transient_for=self, flags=0)
+        dlg.add_buttons("Close", Gtk.ResponseType.CLOSE)
+        dlg.set_default_size(300, 250)
+        
+        box = dlg.get_content_area()
+        vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        vbox.set_border_width(20)
+        box.add(vbox)
+        
+        # Icon
+        script_dir = os.path.dirname(os.path.realpath(__file__))
+        icon_path = os.path.join(script_dir, "icon.png")
+        if os.path.exists(icon_path):
+            try:
+                pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(icon_path, 64, 64, True)
+                image = Gtk.Image.new_from_pixbuf(pixbuf)
+                vbox.pack_start(image, False, False, 0)
+            except Exception as e:
+                print(f"Error loading icon: {e}")
+
+        # Name
+        lbl_name = Gtk.Label()
+        lbl_name.set_markup("<span size='large' weight='bold'>DKST 한국어 입력기</span>")
+        lbl_name.set_selectable(False)
+        vbox.pack_start(lbl_name, False, False, 0)
+
+        # Description
+        lbl_desc = Gtk.Label(label="Korean Input Method and Utilities")
+        lbl_desc.set_selectable(False)
+        vbox.pack_start(lbl_desc, False, False, 0)
+        
+        # Copyright
+        lbl_copy = Gtk.Label(label="(C) 2025 DINKI'ssTyle")
+        lbl_copy.set_selectable(False)
+        vbox.pack_start(lbl_copy, False, False, 0)
+
+        dlg.show_all()
+        dlg.run()
+        dlg.destroy()
 
 if __name__ == "__main__":
     win = SettingsWindow()
