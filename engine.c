@@ -238,7 +238,7 @@ static void update_preedit(DkstEngine *engine) {
                                               IBUS_ENGINE_PREEDIT_COMMIT);
   } else if (engine->showing_indicator) {
     // Show "한" or "EN"
-    const char *indicator_str = engine->is_hangul_mode ? "한" : "EN";
+    const char *indicator_str = engine->is_hangul_mode ? "한" : "영";
     IBusText *text = ibus_text_new_from_string(indicator_str);
     ibus_text_set_attributes(text, ibus_attr_list_new());
     // Use a different color or style for indicator?
@@ -249,7 +249,7 @@ static void update_preedit(DkstEngine *engine) {
 
     ibus_engine_update_preedit_text_with_mode((IBusEngine *)engine, text,
                                               ibus_text_get_length(text), TRUE,
-                                              IBUS_ENGINE_PREEDIT_COMMIT);
+                                              IBUS_ENGINE_PREEDIT_CLEAR);
   } else {
     ibus_engine_hide_preedit_text((IBusEngine *)engine);
   }
@@ -464,15 +464,22 @@ static gboolean dkst_engine_process_key_event(IBusEngine *e, guint keyval,
 
   // English Mode Pass-through
   if (!engine->is_hangul_mode) {
+    if (engine->showing_indicator)
+      clear_indicator(engine);
     // debug_log("English Mode. Pass.\n");
     return FALSE;
   }
 
   // Backspace
   // Backspace
+  // Backspace
   if (keyval == IBUS_KEY_BackSpace) {
+    // if (engine->showing_indicator) clear_indicator(engine); // Handled above
+    // implicitly? No, wait. Wait, if we are here we are in Hangul mode. If
+    // indicator was showing, we should clear it if we start interacting.
     if (engine->showing_indicator)
-      clear_indicator(engine); // Clear on backspace too
+      clear_indicator(engine);
+
     if (dkst_hangul_backspace(&engine->hangul)) {
       update_preedit(engine);
       return TRUE;
