@@ -30,9 +30,12 @@ sudo pkill -f dkst-ime || true
 
 sudo cp dkst-ime "$DEST_DIR/"
 sudo cp setup.py "$DEST_DIR/"
+sudo cp hanja_editor.py "$DEST_DIR/"
+sudo cp hanja.txt "$DEST_DIR/"
 sudo cp icon.png "$DEST_DIR/"
 sudo chmod +x "$DEST_DIR/dkst-ime"
 sudo chmod +x "$DEST_DIR/setup.py"
+sudo chmod +x "$DEST_DIR/hanja_editor.py"
 
 # Copy Component XML
 echo "Registering component..."

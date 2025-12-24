@@ -1,11 +1,23 @@
 
 #include "hangul.h"
+#include "hanja_dict.h"
 #include <ibus.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
 
 static void debug_log(const char *fmt, ...) {
-  // Debug logging disabled for production
+  // Enable debug logging for crash investigation
+  FILE *f =
+      fopen("/home/dinki/github/DINKIssTyle-IME-Ubuntu/debug_log.txt", "a");
+  if (f) {
+    va_list args;
+    va_start(args, fmt);
+    vfprintf(f, fmt, args);
+    va_end(args);
+    fflush(f);
+    fclose(f);
+  }
 }
 
 G_DEFINE_AUTOPTR_CLEANUP_FUNC(IBusEngine, g_object_unref)
@@ -38,13 +50,28 @@ struct _DkstEngine {
   guint indicator_timeout_id;
   gboolean showing_indicator;
   gboolean enable_indicator;
+
+  // Hanja feature
+  gboolean hanja_mode;         // True when showing hanja candidates
+  GPtrArray *hanja_candidates; // Current candidate list
+  gchar *hanja_source;         // Original hangul being converted
+  GList *hanja_keys;           // Configurable hanja trigger keys
+  gchar *word_buffer;          // Buffer for multi-char word conversion
 };
+
+// Static hanja dictionary (shared across all engine instances)
+static HanjaDict g_hanja_dict = {NULL, NULL};
+static gboolean g_hanja_dict_loaded = FALSE;
 
 G_DEFINE_TYPE(DkstEngine, dkst_engine, IBUS_TYPE_ENGINE)
 
 static void dkst_engine_init(DkstEngine *engine) {
   dkst_hangul_init(&engine->hangul);
+
+  // Create lookup table and sink the floating reference
   engine->table = ibus_lookup_table_new(10, 0, TRUE, TRUE);
+  g_object_ref_sink(engine->table);
+
   engine->is_hangul_mode = TRUE;
 
   engine->shift_mappings =
@@ -57,6 +84,21 @@ static void dkst_engine_init(DkstEngine *engine) {
   engine->indicator_timeout_id = 0;
   engine->showing_indicator = FALSE;
   engine->enable_indicator = TRUE;
+
+  // Hanja feature initialization
+  engine->hanja_mode = FALSE;
+  engine->hanja_candidates = NULL;
+  engine->hanja_source = NULL;
+
+  // Load hanja dictionary (once, shared)
+  if (!g_hanja_dict_loaded) {
+    gchar *user_dict_path = g_build_filename(
+        g_get_user_config_dir(), "ibus-dkst", "hanja_user.txt", NULL);
+    hanja_dict_init(&g_hanja_dict, "/usr/share/ibus-dkst/hanja.txt",
+                    user_dict_path);
+    g_free(user_dict_path);
+    g_hanja_dict_loaded = TRUE;
+  }
 }
 
 static void free_toggle_key(gpointer data) { g_free(data); }
@@ -78,6 +120,16 @@ static void dkst_engine_finalize(GObject *object) {
   if (engine->toggle_keys) {
     g_list_free_full(engine->toggle_keys, free_toggle_key);
     engine->toggle_keys = NULL;
+  }
+
+  // Hanja cleanup
+  if (engine->hanja_candidates) {
+    g_ptr_array_unref(engine->hanja_candidates);
+    engine->hanja_candidates = NULL;
+  }
+  if (engine->hanja_source) {
+    g_free(engine->hanja_source);
+    engine->hanja_source = NULL;
   }
 
   G_OBJECT_CLASS(dkst_engine_parent_class)->finalize(object);
@@ -118,6 +170,45 @@ static void add_toggle_key(DkstEngine *engine, const gchar *keystr) {
     tk->modifiers = modifiers;
     engine->toggle_keys = g_list_append(engine->toggle_keys, tk);
     debug_log("Added Toggle Key: Val=%x Mods=%x (from %s)\n", keyval, modifiers,
+              keystr);
+  }
+}
+
+// Helper to parse hanja key string like "Alt+Return"
+static void add_hanja_key(DkstEngine *engine, const gchar *keystr) {
+  guint keyval = 0;
+  guint modifiers = 0;
+
+  // Split by '+'
+  gchar **parts = g_strsplit(keystr, "+", -1);
+  guint len = g_strv_length(parts);
+
+  if (len > 0) {
+    // Last part is key name
+    keyval = ibus_keyval_from_name(parts[len - 1]);
+
+    // Previous parts are modifiers
+    for (guint i = 0; i < len - 1; i++) {
+      if (g_ascii_strcasecmp(parts[i], "Shift") == 0)
+        modifiers |= IBUS_SHIFT_MASK;
+      else if (g_ascii_strcasecmp(parts[i], "Control") == 0)
+        modifiers |= IBUS_CONTROL_MASK;
+      else if (g_ascii_strcasecmp(parts[i], "Alt") == 0)
+        modifiers |= IBUS_MOD1_MASK;
+      else if (g_ascii_strcasecmp(parts[i], "Super") == 0)
+        modifiers |= IBUS_SUPER_MASK;
+      else if (g_ascii_strcasecmp(parts[i], "Meta") == 0)
+        modifiers |= IBUS_META_MASK;
+    }
+  }
+  g_strfreev(parts);
+
+  if (keyval != 0) {
+    ToggleKey *hk = g_new(ToggleKey, 1);
+    hk->keyval = keyval;
+    hk->modifiers = modifiers;
+    engine->hanja_keys = g_list_append(engine->hanja_keys, hk);
+    debug_log("Added Hanja Key: Val=%x Mods=%x (from %s)\n", keyval, modifiers,
               keystr);
   }
 }
@@ -181,6 +272,26 @@ static void load_config(DkstEngine *engine) {
       }
     }
 
+    // Hanja Keys
+    if (engine->hanja_keys) {
+      g_list_free_full(engine->hanja_keys, free_toggle_key);
+      engine->hanja_keys = NULL;
+    }
+    if (g_key_file_has_key(key_file, "HanjaKeys", "Keys", NULL)) {
+      gchar *keys_str =
+          g_key_file_get_string(key_file, "HanjaKeys", "Keys", NULL);
+      if (keys_str) {
+        gchar **keys = g_strsplit(keys_str, ";", -1);
+        for (int i = 0; keys[i] != NULL; i++) {
+          if (strlen(keys[i]) > 0) {
+            add_hanja_key(engine, keys[i]);
+          }
+        }
+        g_strfreev(keys);
+        g_free(keys_str);
+      }
+    }
+
     // Load Mappings
     g_hash_table_remove_all(engine->shift_mappings);
     if (engine->enable_custom_shift) {
@@ -208,6 +319,12 @@ static void load_config(DkstEngine *engine) {
   if (engine->toggle_keys == NULL) {
     add_toggle_key(engine, "Shift+space");
     add_toggle_key(engine, "Hangul");
+  }
+
+  // Fallback if no hanja keys loaded? Add defaults.
+  if (engine->hanja_keys == NULL) {
+    add_hanja_key(engine, "Alt+Return");
+    add_hanja_key(engine, "Hangul_Hanja");
   }
 
   g_key_file_free(key_file);
@@ -291,6 +408,148 @@ static void show_indicator(DkstEngine *engine) {
   update_preedit(engine);
 }
 
+// Forward declaration for commit_string (used by select_hanja_candidate)
+static void commit_string(DkstEngine *engine, const char *str);
+
+// --- Hanja Feature ---
+static void hide_hanja_candidates(DkstEngine *engine) {
+  if (engine->hanja_mode) {
+    engine->hanja_mode = FALSE;
+    ibus_engine_hide_lookup_table((IBusEngine *)engine);
+    ibus_lookup_table_clear(engine->table);
+  }
+  if (engine->hanja_candidates) {
+    g_ptr_array_unref(engine->hanja_candidates);
+    engine->hanja_candidates = NULL;
+  }
+  if (engine->hanja_source) {
+    g_free(engine->hanja_source);
+    engine->hanja_source = NULL;
+  }
+}
+
+static void show_hanja_candidates(DkstEngine *engine) {
+  debug_log("show_hanja_candidates: ENTER\n");
+
+  // Get current composed text
+  uint32_t syl = dkst_hangul_current_syllable(&engine->hangul);
+  debug_log("show_hanja_candidates: syl=%x, word_buffer=%s\n", syl,
+            engine->word_buffer ? engine->word_buffer : "(null)");
+
+  // Build lookup string
+  GString *word = g_string_new("");
+  gchar cur_char[7] = "";
+
+  if (engine->word_buffer && strlen(engine->word_buffer) > 0) {
+    g_string_append(word, engine->word_buffer);
+  }
+
+  if (syl != 0) {
+    // Convert current syllable to UTF-8
+    gint cur_len = g_unichar_to_utf8(syl, cur_char);
+    cur_char[cur_len] = '\0';
+    g_string_append(word, cur_char);
+  }
+
+  // If nothing to look up, return
+  if (word->len == 0) {
+    debug_log("show_hanja_candidates: nothing to look up\n");
+    g_string_free(word, TRUE);
+    return;
+  }
+
+  debug_log("show_hanja_candidates: looking up word '%s'\n", word->str);
+
+  // Try word lookup first
+  GPtrArray *candidates = hanja_dict_lookup(&g_hanja_dict, word->str);
+  gboolean is_word_match = FALSE;
+  glong word_len = g_utf8_strlen(word->str, -1);
+
+  // If word is 2+ chars and lookup found results, use word match
+  if (word_len >= 2 && candidates && candidates->len > 0) {
+    is_word_match = TRUE;
+    debug_log(
+        "show_hanja_candidates: word match found (%ld chars), %u candidates\n",
+        word_len, candidates->len);
+  } else if (cur_char[0] != '\0') {
+    // Fall back to single character lookup
+    if (candidates)
+      g_ptr_array_unref(candidates);
+    debug_log("show_hanja_candidates: no word match, trying single char '%s'\n",
+              cur_char);
+    candidates = hanja_dict_lookup(&g_hanja_dict, cur_char);
+  }
+
+  debug_log("show_hanja_candidates: candidates=%p\n", (void *)candidates);
+  if (!candidates || candidates->len == 0) {
+    debug_log("show_hanja_candidates: no candidates found\n");
+    if (candidates)
+      g_ptr_array_unref(candidates);
+    g_string_free(word, TRUE);
+    return;
+  }
+  debug_log("show_hanja_candidates: found %u candidates\n", candidates->len);
+
+  // Store source text for later
+  if (is_word_match) {
+    engine->hanja_source = g_strdup(word->str);
+  } else {
+    engine->hanja_source = g_strdup(cur_char);
+  }
+  g_string_free(word, TRUE);
+
+  engine->hanja_candidates = candidates;
+  engine->hanja_mode = TRUE;
+
+  // Populate lookup table
+  ibus_lookup_table_clear(engine->table);
+  for (guint i = 0; i < candidates->len; i++) {
+    const gchar *candidate = g_ptr_array_index(candidates, i);
+    IBusText *text = ibus_text_new_from_string(candidate);
+    ibus_lookup_table_append_candidate(engine->table, text);
+  }
+
+  // Show lookup table
+  debug_log("show_hanja_candidates: showing table with %u entries\n",
+            ibus_lookup_table_get_number_of_candidates(engine->table));
+  ibus_engine_update_lookup_table((IBusEngine *)engine, engine->table, TRUE);
+  debug_log("show_hanja_candidates: EXIT success\n");
+}
+
+static void select_hanja_candidate(DkstEngine *engine, guint index) {
+  if (!engine->hanja_mode || !engine->hanja_candidates)
+    return;
+
+  if (index >= engine->hanja_candidates->len)
+    return;
+
+  const gchar *selected = g_ptr_array_index(engine->hanja_candidates, index);
+
+  // Extract just the character (before any parenthesis)
+  // Format may be "韓 (한국 한)" - we want just "韓"
+  gchar *commit_str = g_strdup(selected);
+  gchar *space = strchr(commit_str, ' ');
+  if (space)
+    *space = '\0';
+
+  // Clear word buffer when hanja is selected (word is replaced)
+  if (engine->word_buffer) {
+    g_free(engine->word_buffer);
+    engine->word_buffer = NULL;
+  }
+
+  // Clear composed text
+  dkst_hangul_reset(&engine->hangul);
+  ibus_engine_hide_preedit_text((IBusEngine *)engine);
+
+  // Commit selected hanja
+  commit_string(engine, commit_str);
+  g_free(commit_str);
+
+  // Cleanup
+  hide_hanja_candidates(engine);
+}
+
 static void commit_string(DkstEngine *engine, const char *str) {
   if (str && *str) {
     IBusText *text = ibus_text_new_from_string(str);
@@ -330,6 +589,20 @@ static void commit_full(DkstEngine *engine) {
     // text object float ref. But checking ibus-hangul: text = ...;
     // ibus_engine_commit_text(...); It does not free 'text' manually if IBus
     // takes it. g_object_ref_sink logic usually applies.
+
+    // Accumulate committed Hangul into word_buffer for multi-char hanja lookup
+    if (engine->word_buffer == NULL) {
+      engine->word_buffer = g_strdup(full->str);
+    } else {
+      gchar *new_buffer = g_strconcat(engine->word_buffer, full->str, NULL);
+      g_free(engine->word_buffer);
+      engine->word_buffer = new_buffer;
+    }
+    // Limit word_buffer size to prevent unbounded growth (max ~20 chars)
+    if (engine->word_buffer && g_utf8_strlen(engine->word_buffer, -1) > 20) {
+      g_free(engine->word_buffer);
+      engine->word_buffer = NULL;
+    }
   }
 
   // Reset internal state
@@ -337,7 +610,8 @@ static void commit_full(DkstEngine *engine) {
   // Ensure visual preedit is cleared/updated to match empty state
   update_preedit(engine);
 
-  debug_log("commit_full: Committed '%s', reset state.\n", full->str);
+  debug_log("commit_full: Committed '%s', word_buffer='%s'.\n", full->str,
+            engine->word_buffer ? engine->word_buffer : "");
 
   g_string_free(full, TRUE);
 }
@@ -346,6 +620,21 @@ static void check_and_commit_pending(DkstEngine *engine) {
   char *pending = dkst_hangul_get_commit_string(&engine->hangul);
   if (pending) {
     commit_string(engine, pending);
+
+    // Also accumulate to word_buffer for multi-char hanja lookup
+    if (engine->word_buffer == NULL) {
+      engine->word_buffer = g_strdup(pending);
+    } else {
+      gchar *new_buffer = g_strconcat(engine->word_buffer, pending, NULL);
+      g_free(engine->word_buffer);
+      engine->word_buffer = new_buffer;
+    }
+    // Limit word_buffer size
+    if (engine->word_buffer && g_utf8_strlen(engine->word_buffer, -1) > 20) {
+      g_free(engine->word_buffer);
+      engine->word_buffer = NULL;
+    }
+
     g_free(pending);
   }
 }
@@ -362,6 +651,15 @@ static void dkst_engine_register_props(DkstEngine *engine) {
                         ibus_text_new_from_string("Open Settings"), TRUE, TRUE,
                         PROP_STATE_UNCHECKED, NULL);
   ibus_prop_list_append(props, prop_setup);
+
+  // Dictionary Editor Property
+  IBusProperty *prop_hanja_editor = ibus_property_new(
+      "HanjaEditor", PROP_TYPE_NORMAL,
+      ibus_text_new_from_string("사전 편집기 (Dictionary Editor)"),
+      "accessories-dictionary",
+      ibus_text_new_from_string("Edit Hanja Dictionary"), TRUE, TRUE,
+      PROP_STATE_UNCHECKED, NULL);
+  ibus_prop_list_append(props, prop_hanja_editor);
 
   ibus_engine_register_properties((IBusEngine *)engine, props);
 }
@@ -380,6 +678,16 @@ static void dkst_engine_property_activate(IBusEngine *e, const gchar *prop_name,
       debug_log("Failed to launch setup: %s\n", error->message);
       g_error_free(error);
     }
+  } else if (g_strcmp0(prop_name, "HanjaEditor") == 0) {
+    // Launch hanja_editor.py
+    gchar *argv[] = {"/usr/share/ibus-dkst/hanja_editor.py", NULL};
+    GError *error = NULL;
+    g_spawn_async(NULL, argv, NULL, G_SPAWN_SEARCH_PATH, NULL, NULL, NULL,
+                  &error);
+    if (error) {
+      debug_log("Failed to launch hanja editor: %s\n", error->message);
+      g_error_free(error);
+    }
   }
 }
 
@@ -387,12 +695,114 @@ static gboolean dkst_engine_process_key_event(IBusEngine *e, guint keyval,
                                               guint keycode, guint state) {
   DkstEngine *engine = (DkstEngine *)e;
 
-  debug_log("Key: val=%x code=%x state=%x mode=%d\n", keyval, keycode, state,
-            engine->is_hangul_mode);
+  debug_log("Key: val=%x code=%x state=%x mode=%d hanja=%d\n", keyval, keycode,
+            state, engine->is_hangul_mode, engine->hanja_mode);
 
   // Ignore updates on release
   if (state & IBUS_RELEASE_MASK)
     return FALSE;
+
+  // --- Hanja Mode Key Handling ---
+  if (engine->hanja_mode) {
+    debug_log("Hanja mode: handling key %x\n", keyval);
+
+    // Safety check
+    if (!engine->table || !IBUS_IS_LOOKUP_TABLE(engine->table)) {
+      debug_log("ERROR: engine->table is invalid! ptr=%p\n",
+                (void *)engine->table);
+      engine->hanja_mode = FALSE;
+      return FALSE;
+    }
+
+    // Handle candidate selection when in hanja mode
+    debug_log("Hanja mode: calling get_cursor_pos...\n");
+    guint cursor = ibus_lookup_table_get_cursor_pos(engine->table);
+    debug_log("Hanja mode: cursor=%u\n", cursor);
+
+    switch (keyval) {
+    case IBUS_KEY_Up:
+    case IBUS_KEY_KP_Up:
+      debug_log("Hanja: cursor up\n");
+      ibus_lookup_table_cursor_up(engine->table);
+      ibus_engine_update_lookup_table(e, engine->table, TRUE);
+      return TRUE;
+
+    case IBUS_KEY_Down:
+    case IBUS_KEY_KP_Down:
+      debug_log("Hanja: cursor down\n");
+      ibus_lookup_table_cursor_down(engine->table);
+      ibus_engine_update_lookup_table(e, engine->table, TRUE);
+      return TRUE;
+
+    case IBUS_KEY_Page_Up:
+      ibus_lookup_table_page_up(engine->table);
+      ibus_engine_update_lookup_table(e, engine->table, TRUE);
+      return TRUE;
+
+    case IBUS_KEY_Page_Down:
+      ibus_lookup_table_page_down(engine->table);
+      ibus_engine_update_lookup_table(e, engine->table, TRUE);
+      return TRUE;
+
+    case IBUS_KEY_Return:
+    case IBUS_KEY_KP_Enter:
+      cursor = ibus_lookup_table_get_cursor_pos(engine->table);
+      select_hanja_candidate(engine, cursor);
+      return TRUE;
+
+    case IBUS_KEY_Escape:
+      hide_hanja_candidates(engine);
+      return TRUE;
+
+    // Number keys 1-9 for direct selection
+    case IBUS_KEY_1:
+    case IBUS_KEY_2:
+    case IBUS_KEY_3:
+    case IBUS_KEY_4:
+    case IBUS_KEY_5:
+    case IBUS_KEY_6:
+    case IBUS_KEY_7:
+    case IBUS_KEY_8:
+    case IBUS_KEY_9: {
+      guint page_size = ibus_lookup_table_get_page_size(engine->table);
+      guint page_start =
+          (ibus_lookup_table_get_cursor_pos(engine->table) / page_size) *
+          page_size;
+      guint index = page_start + (keyval - IBUS_KEY_1);
+      if (index < engine->hanja_candidates->len) {
+        select_hanja_candidate(engine, index);
+      }
+    }
+      return TRUE;
+
+    default:
+      // Any other key cancels hanja mode
+      hide_hanja_candidates(engine);
+      // Fall through to normal processing
+      break;
+    }
+  }
+
+  // --- Hanja Trigger Keys (from config) ---
+  if (engine->hanja_keys) {
+    guint mask = IBUS_SHIFT_MASK | IBUS_CONTROL_MASK | IBUS_MOD1_MASK |
+                 IBUS_SUPER_MASK | IBUS_META_MASK;
+    guint current_mods = state & mask;
+
+    GList *l;
+    for (l = engine->hanja_keys; l != NULL; l = l->next) {
+      ToggleKey *hk = (ToggleKey *)l->data;
+      if (keyval == hk->keyval && current_mods == hk->modifiers) {
+        // Allow hanja conversion if there's composed text OR word_buffer
+        if (dkst_hangul_has_composed(&engine->hangul) ||
+            (engine->word_buffer && strlen(engine->word_buffer) > 0)) {
+          show_hanja_candidates(engine);
+          return TRUE;
+        }
+        return FALSE;
+      }
+    }
+  }
 
   // Check against toggle keys
   // For each registered toggle key, check if keyval and modifiers (excluding
@@ -492,7 +902,14 @@ static gboolean dkst_engine_process_key_event(IBusEngine *e, guint keyval,
     if (engine->showing_indicator)
       clear_indicator(engine);
     commit_full(engine); // Commit everything
-    return FALSE;        // Let system handle space
+
+    // Reset word buffer on space/enter (word boundary)
+    if (engine->word_buffer) {
+      g_free(engine->word_buffer);
+      engine->word_buffer = NULL;
+    }
+
+    return FALSE; // Let system handle space
   }
 
   // Printable char

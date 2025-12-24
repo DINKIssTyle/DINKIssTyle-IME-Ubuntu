@@ -143,6 +143,37 @@ class SettingsWindow(Gtk.Window):
         btn_remove_key.connect("clicked", self.on_remove_key)
         vbox_toggle_btns.pack_start(btn_remove_key, False, False, 0)
 
+        # 2.5. Hanja Toggle Keys Frame
+        frame_hanja = Gtk.Frame(label="Hanja Toggle Keys (한자전환)")
+        main_vbox.pack_start(frame_hanja, False, False, 0)
+        
+        hbox_hanja = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        hbox_hanja.set_border_width(10)
+        frame_hanja.add(hbox_hanja)
+        
+        # List
+        self.hanja_store = Gtk.ListStore(str)
+        self.hanja_tree = Gtk.TreeView(model=self.hanja_store)
+        self.hanja_tree.append_column(Gtk.TreeViewColumn("Key", Gtk.CellRendererText(), text=0))
+        
+        scroll_hanja = Gtk.ScrolledWindow()
+        scroll_hanja.set_min_content_height(80)
+        scroll_hanja.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        scroll_hanja.add(self.hanja_tree)
+        hbox_hanja.pack_start(scroll_hanja, True, True, 0)
+        
+        # Buttons
+        vbox_hanja_btns = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5)
+        hbox_hanja.pack_start(vbox_hanja_btns, False, False, 0)
+        
+        btn_add_hanja = Gtk.Button(label="Add")
+        btn_add_hanja.connect("clicked", self.on_add_hanja_key)
+        vbox_hanja_btns.pack_start(btn_add_hanja, False, False, 0)
+        
+        btn_remove_hanja = Gtk.Button(label="Remove")
+        btn_remove_hanja.connect("clicked", self.on_remove_hanja_key)
+        vbox_hanja_btns.pack_start(btn_remove_hanja, False, False, 0)
+
         # 3. Custom Shift Mappings Frame
         frame_custom = Gtk.Frame(label="Custom Shift Mappings")
         main_vbox.pack_start(frame_custom, True, True, 0)
@@ -219,6 +250,7 @@ class SettingsWindow(Gtk.Window):
         bs_mode = "JASO"
         is_custom = False
         toggle_keys_str = "Shift+space;Hangul"
+        hanja_keys_str = "Alt+Return;Hangul_Hanja"
 
         if os.path.exists(CONFIG_FILE):
             try:
@@ -231,6 +263,9 @@ class SettingsWindow(Gtk.Window):
                 
                 if "ToggleKeys" in self.config and "Keys" in self.config["ToggleKeys"]:
                     toggle_keys_str = self.config["ToggleKeys"]["Keys"]
+                
+                if "HanjaKeys" in self.config and "Keys" in self.config["HanjaKeys"]:
+                    hanja_keys_str = self.config["HanjaKeys"]["Keys"]
                 
                 if "CustomShift" in self.config:
                     # Update store from config
@@ -257,6 +292,13 @@ class SettingsWindow(Gtk.Window):
             for key in toggle_keys_str.split(";"):
                 if key.strip():
                     self.toggle_store.append([key.strip()])
+        
+        # Populate Hanja Keys
+        self.hanja_store.clear()
+        if hanja_keys_str:
+            for key in hanja_keys_str.split(";"):
+                if key.strip():
+                    self.hanja_store.append([key.strip()])
 
     def save_to_config(self):
         if "Settings" not in self.config:
@@ -276,6 +318,15 @@ class SettingsWindow(Gtk.Window):
         for row in self.toggle_store:
             keys.append(row[0])
         self.config["ToggleKeys"]["Keys"] = ";".join(keys)
+        
+        # Save Hanja Keys
+        if "HanjaKeys" not in self.config:
+            self.config["HanjaKeys"] = {}
+        
+        hanja_keys = []
+        for row in self.hanja_store:
+            hanja_keys.append(row[0])
+        self.config["HanjaKeys"]["Keys"] = ";".join(hanja_keys)
         
         # Save Mappings from Store
         if "CustomShift" in self.config:
@@ -311,6 +362,28 @@ class SettingsWindow(Gtk.Window):
 
     def on_remove_key(self, widget):
         selection = self.toggle_tree.get_selection()
+        model, iter = selection.get_selected()
+        if iter:
+            model.remove(iter)
+
+    def on_add_hanja_key(self, widget):
+        dlg = KeyCaptureDialog(self)
+        resp = dlg.run()
+        if resp == Gtk.ResponseType.OK:
+            key = dlg.captured_key
+            if key:
+                # Check for duplicate
+                exists = False
+                for row in self.hanja_store:
+                    if row[0] == key:
+                        exists = True
+                        break
+                if not exists:
+                    self.hanja_store.append([key])
+        dlg.destroy()
+
+    def on_remove_hanja_key(self, widget):
+        selection = self.hanja_tree.get_selection()
         model, iter = selection.get_selected()
         if iter:
             model.remove(iter)
