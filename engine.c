@@ -7,17 +7,8 @@
 #include <string.h>
 
 static void debug_log(const char *fmt, ...) {
-  // Enable debug logging for crash investigation
-  FILE *f =
-      fopen("/home/dinki/github/DINKIssTyle-IME-Ubuntu/debug_log.txt", "a");
-  if (f) {
-    va_list args;
-    va_start(args, fmt);
-    vfprintf(f, fmt, args);
-    va_end(args);
-    fflush(f);
-    fclose(f);
-  }
+  // Debug logging disabled for production
+  (void)fmt;
 }
 
 G_DEFINE_AUTOPTR_CLEANUP_FUNC(IBusEngine, g_object_unref)

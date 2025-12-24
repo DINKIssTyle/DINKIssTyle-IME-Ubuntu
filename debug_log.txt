@@ -16673,3 +16673,374 @@ Added Toggle Key: Val=20 Mods=4 (from Control+space)
 Added Hanja Key: Val=ff0d Mods=8 (from Alt+Return)
 Added Hanja Key: Val=1008ffb1 Mods=9 (from Shift+Alt+TouchpadOff)
 Config Loaded: Moa=1, Backspace=0, Shift=1
+Focus Out: Starting... (Hangul Mode: 1)
+Focus Out: No composed text.
+Focus Out: Finished.
+Focus In
+Added Toggle Key: Val=20 Mods=1 (from Shift+space)
+Added Toggle Key: Val=ff31 Mods=0 (from Hangul)
+Added Toggle Key: Val=20 Mods=4 (from Control+space)
+Added Hanja Key: Val=ff0d Mods=8 (from Alt+Return)
+Added Hanja Key: Val=1008ffb1 Mods=9 (from Shift+Alt+TouchpadOff)
+Config Loaded: Moa=1, Backspace=0, Shift=1
+Reset: Starting...
+Reset: Finished.
+Focus Out: Starting... (Hangul Mode: 1)
+Focus Out: No composed text.
+Focus Out: Finished.
+Focus In
+Added Toggle Key: Val=20 Mods=1 (from Shift+space)
+Added Toggle Key: Val=ff31 Mods=0 (from Hangul)
+Added Toggle Key: Val=20 Mods=4 (from Control+space)
+Added Hanja Key: Val=ff0d Mods=8 (from Alt+Return)
+Added Hanja Key: Val=1008ffb1 Mods=9 (from Shift+Alt+TouchpadOff)
+Config Loaded: Moa=1, Backspace=0, Shift=1
+Focus Out: Starting... (Hangul Mode: 1)
+Focus Out: No composed text.
+Focus Out: Finished.
+Focus In
+Added Toggle Key: Val=20 Mods=1 (from Shift+space)
+Added Toggle Key: Val=ff31 Mods=0 (from Hangul)
+Added Toggle Key: Val=20 Mods=4 (from Control+space)
+Added Hanja Key: Val=ff0d Mods=8 (from Alt+Return)
+Added Hanja Key: Val=1008ffb1 Mods=9 (from Shift+Alt+TouchpadOff)
+Config Loaded: Moa=1, Backspace=0, Shift=1
+Focus Out: Starting... (Hangul Mode: 1)
+Focus Out: No composed text.
+Focus Out: Finished.
+Focus In
+Added Toggle Key: Val=20 Mods=1 (from Shift+space)
+Added Toggle Key: Val=ff31 Mods=0 (from Hangul)
+Added Toggle Key: Val=20 Mods=4 (from Control+space)
+Added Hanja Key: Val=ff0d Mods=8 (from Alt+Return)
+Added Hanja Key: Val=1008ffb1 Mods=9 (from Shift+Alt+TouchpadOff)
+Config Loaded: Moa=1, Backspace=0, Shift=1
+Focus Out: Starting... (Hangul Mode: 1)
+Focus Out: No composed text.
+Focus Out: Finished.
+Focus In
+Added Toggle Key: Val=20 Mods=1 (from Shift+space)
+Added Toggle Key: Val=ff31 Mods=0 (from Hangul)
+Added Toggle Key: Val=20 Mods=4 (from Control+space)
+Added Hanja Key: Val=ff0d Mods=8 (from Alt+Return)
+Added Hanja Key: Val=1008ffb1 Mods=9 (from Shift+Alt+TouchpadOff)
+Config Loaded: Moa=1, Backspace=0, Shift=1
+Key: val=64 code=20 state=0 mode=1 hanja=0
+Key: val=64 code=20 state=40000000 mode=1 hanja=0
+Key: val=6c code=26 state=0 mode=1 hanja=0
+Key: val=6c code=26 state=40000000 mode=1 hanja=0
+Key: val=77 code=11 state=0 mode=1 hanja=0
+Key: val=77 code=11 state=40000000 mode=1 hanja=0
+Key: val=70 code=19 state=0 mode=1 hanja=0
+Key: val=70 code=19 state=40000000 mode=1 hanja=0
+Key: val=20 code=39 state=0 mode=1 hanja=0
+commit_full: Committed '제', word_buffer='이제'.
+Key: val=20 code=39 state=40000000 mode=1 hanja=0
+Key: val=65 code=12 state=0 mode=1 hanja=0
+Key: val=65 code=12 state=40000000 mode=1 hanja=0
+Key: val=6c code=26 state=0 mode=1 hanja=0
+Key: val=6c code=26 state=40000000 mode=1 hanja=0
+Key: val=71 code=10 state=0 mode=1 hanja=0
+Key: val=71 code=10 state=40000000 mode=1 hanja=0
+Key: val=6a code=24 state=0 mode=1 hanja=0
+Key: val=6a code=24 state=40000000 mode=1 hanja=0
+Key: val=72 code=13 state=0 mode=1 hanja=0
+Key: val=72 code=13 state=40000000 mode=1 hanja=0
+Key: val=6d code=32 state=0 mode=1 hanja=0
+Key: val=6d code=32 state=40000000 mode=1 hanja=0
+Key: val=66 code=21 state=0 mode=1 hanja=0
+Key: val=66 code=21 state=40000000 mode=1 hanja=0
+Key: val=6d code=32 state=0 mode=1 hanja=0
+Key: val=6d code=32 state=40000000 mode=1 hanja=0
+Key: val=66 code=21 state=0 mode=1 hanja=0
+Key: val=66 code=21 state=40000000 mode=1 hanja=0
+Key: val=20 code=39 state=0 mode=1 hanja=0
+commit_full: Committed '를', word_buffer='디버그를'.
+Key: val=20 code=39 state=40000000 mode=1 hanja=0
+Key: val=71 code=10 state=0 mode=1 hanja=0
+Key: val=71 code=10 state=40000000 mode=1 hanja=0
+Key: val=6c code=26 state=0 mode=1 hanja=0
+Key: val=6c code=26 state=40000000 mode=1 hanja=0
+Key: val=67 code=22 state=0 mode=1 hanja=0
+Key: val=67 code=22 state=40000000 mode=1 hanja=0
+Key: val=68 code=23 state=0 mode=1 hanja=0
+Key: val=68 code=23 state=40000000 mode=1 hanja=0
+Key: val=6b code=25 state=0 mode=1 hanja=0
+Key: val=66 code=21 state=0 mode=1 hanja=0
+Key: val=6b code=25 state=40000000 mode=1 hanja=0
+Key: val=66 code=21 state=40000000 mode=1 hanja=0
+Key: val=74 code=14 state=0 mode=1 hanja=0
+Key: val=74 code=14 state=40000000 mode=1 hanja=0
+Key: val=6a code=24 state=0 mode=1 hanja=0
+Key: val=6a code=24 state=40000000 mode=1 hanja=0
+Key: val=64 code=20 state=0 mode=1 hanja=0
+Key: val=64 code=20 state=40000000 mode=1 hanja=0
+Key: val=67 code=22 state=0 mode=1 hanja=0
+Key: val=68 code=23 state=0 mode=1 hanja=0
+Key: val=67 code=22 state=40000000 mode=1 hanja=0
+Key: val=6b code=25 state=0 mode=1 hanja=0
+Key: val=68 code=23 state=40000000 mode=1 hanja=0
+Key: val=6b code=25 state=40000000 mode=1 hanja=0
+Key: val=20 code=39 state=0 mode=1 hanja=0
+commit_full: Committed '화', word_buffer='비활성화'.
+Key: val=20 code=39 state=40000000 mode=1 hanja=0
+Key: val=67 code=22 state=0 mode=1 hanja=0
+Key: val=6f code=18 state=0 mode=1 hanja=0
+Key: val=67 code=22 state=40000000 mode=1 hanja=0
+Key: val=6f code=18 state=40000000 mode=1 hanja=0
+Key: val=77 code=11 state=0 mode=1 hanja=0
+Key: val=77 code=11 state=40000000 mode=1 hanja=0
+Key: val=6e code=31 state=0 mode=1 hanja=0
+Key: val=6e code=31 state=40000000 mode=1 hanja=0
+Key: val=74 code=14 state=0 mode=1 hanja=0
+Key: val=74 code=14 state=40000000 mode=1 hanja=0
+Key: val=70 code=19 state=0 mode=1 hanja=0
+Key: val=70 code=19 state=40000000 mode=1 hanja=0
+Key: val=64 code=20 state=0 mode=1 hanja=0
+Key: val=64 code=20 state=40000000 mode=1 hanja=0
+Key: val=79 code=15 state=0 mode=1 hanja=0
+Key: val=79 code=15 state=40000000 mode=1 hanja=0
+Key: val=ff0d code=1c state=0 mode=1 hanja=0
+commit_full: Committed '요', word_buffer='해주세요'.
+Key: val=ff0d code=1c state=40000000 mode=1 hanja=0
+Reset: Starting...
+Reset: Finished.
+Focus Out: Starting... (Hangul Mode: 1)
+Focus Out: No composed text.
+Focus Out: Finished.
+Focus In
+Added Toggle Key: Val=20 Mods=1 (from Shift+space)
+Added Toggle Key: Val=ff31 Mods=0 (from Hangul)
+Added Toggle Key: Val=20 Mods=4 (from Control+space)
+Added Hanja Key: Val=ff0d Mods=8 (from Alt+Return)
+Added Hanja Key: Val=1008ffb1 Mods=9 (from Shift+Alt+TouchpadOff)
+Config Loaded: Moa=1, Backspace=0, Shift=1
+Focus Out: Starting... (Hangul Mode: 1)
+Focus Out: No composed text.
+Focus Out: Finished.
+Focus In
+Added Toggle Key: Val=20 Mods=1 (from Shift+space)
+Added Toggle Key: Val=ff31 Mods=0 (from Hangul)
+Added Toggle Key: Val=20 Mods=4 (from Control+space)
+Added Hanja Key: Val=ff0d Mods=8 (from Alt+Return)
+Added Hanja Key: Val=1008ffb1 Mods=9 (from Shift+Alt+TouchpadOff)
+Config Loaded: Moa=1, Backspace=0, Shift=1
+Focus Out: Starting... (Hangul Mode: 1)
+Focus Out: No composed text.
+Focus Out: Finished.
+Focus In
+Added Toggle Key: Val=20 Mods=1 (from Shift+space)
+Added Toggle Key: Val=ff31 Mods=0 (from Hangul)
+Added Toggle Key: Val=20 Mods=4 (from Control+space)
+Added Hanja Key: Val=ff0d Mods=8 (from Alt+Return)
+Added Hanja Key: Val=1008ffb1 Mods=9 (from Shift+Alt+TouchpadOff)
+Config Loaded: Moa=1, Backspace=0, Shift=1
+Focus Out: Starting... (Hangul Mode: 1)
+Focus Out: No composed text.
+Focus Out: Finished.
+Focus In
+Added Toggle Key: Val=20 Mods=1 (from Shift+space)
+Added Toggle Key: Val=ff31 Mods=0 (from Hangul)
+Added Toggle Key: Val=20 Mods=4 (from Control+space)
+Added Hanja Key: Val=ff0d Mods=8 (from Alt+Return)
+Added Hanja Key: Val=1008ffb1 Mods=9 (from Shift+Alt+TouchpadOff)
+Config Loaded: Moa=1, Backspace=0, Shift=1
+Reset: Starting...
+Reset: Finished.
+Reset: Starting...
+Reset: Finished.
+Focus Out: Starting... (Hangul Mode: 1)
+Focus Out: No composed text.
+Focus Out: Finished.
+Focus In
+Added Toggle Key: Val=20 Mods=1 (from Shift+space)
+Added Toggle Key: Val=ff31 Mods=0 (from Hangul)
+Added Toggle Key: Val=20 Mods=4 (from Control+space)
+Added Hanja Key: Val=ff0d Mods=8 (from Alt+Return)
+Added Hanja Key: Val=1008ffb1 Mods=9 (from Shift+Alt+TouchpadOff)
+Config Loaded: Moa=1, Backspace=0, Shift=1
+Focus Out: Starting... (Hangul Mode: 1)
+Focus Out: No composed text.
+Focus Out: Finished.
+Focus In
+Added Toggle Key: Val=20 Mods=1 (from Shift+space)
+Added Toggle Key: Val=ff31 Mods=0 (from Hangul)
+Added Toggle Key: Val=20 Mods=4 (from Control+space)
+Added Hanja Key: Val=ff0d Mods=8 (from Alt+Return)
+Added Hanja Key: Val=1008ffb1 Mods=9 (from Shift+Alt+TouchpadOff)
+Config Loaded: Moa=1, Backspace=0, Shift=1
+Reset: Starting...
+Reset: Finished.
+Focus Out: Starting... (Hangul Mode: 1)
+Focus Out: No composed text.
+Focus Out: Finished.
+Focus In
+Added Toggle Key: Val=20 Mods=1 (from Shift+space)
+Added Toggle Key: Val=ff31 Mods=0 (from Hangul)
+Added Toggle Key: Val=20 Mods=4 (from Control+space)
+Added Hanja Key: Val=ff0d Mods=8 (from Alt+Return)
+Added Hanja Key: Val=1008ffb1 Mods=9 (from Shift+Alt+TouchpadOff)
+Config Loaded: Moa=1, Backspace=0, Shift=1
+Focus Out: Starting... (Hangul Mode: 1)
+Focus Out: No composed text.
+Focus Out: Finished.
+Focus In
+Added Toggle Key: Val=20 Mods=1 (from Shift+space)
+Added Toggle Key: Val=ff31 Mods=0 (from Hangul)
+Added Toggle Key: Val=20 Mods=4 (from Control+space)
+Added Hanja Key: Val=ff0d Mods=8 (from Alt+Return)
+Added Hanja Key: Val=1008ffb1 Mods=9 (from Shift+Alt+TouchpadOff)
+Config Loaded: Moa=1, Backspace=0, Shift=1
+Reset: Starting...
+Reset: Finished.
+Focus Out: Starting... (Hangul Mode: 1)
+Focus Out: No composed text.
+Focus Out: Finished.
+Focus In
+Added Toggle Key: Val=20 Mods=1 (from Shift+space)
+Added Toggle Key: Val=ff31 Mods=0 (from Hangul)
+Added Toggle Key: Val=20 Mods=4 (from Control+space)
+Added Hanja Key: Val=ff0d Mods=8 (from Alt+Return)
+Added Hanja Key: Val=1008ffb1 Mods=9 (from Shift+Alt+TouchpadOff)
+Config Loaded: Moa=1, Backspace=0, Shift=1
+Focus Out: Starting... (Hangul Mode: 1)
+Focus Out: No composed text.
+Focus Out: Finished.
+Focus In
+Added Toggle Key: Val=20 Mods=1 (from Shift+space)
+Added Toggle Key: Val=ff31 Mods=0 (from Hangul)
+Added Toggle Key: Val=20 Mods=4 (from Control+space)
+Added Hanja Key: Val=ff0d Mods=8 (from Alt+Return)
+Added Hanja Key: Val=1008ffb1 Mods=9 (from Shift+Alt+TouchpadOff)
+Config Loaded: Moa=1, Backspace=0, Shift=1
+Focus Out: Starting... (Hangul Mode: 1)
+Focus Out: No composed text.
+Focus Out: Finished.
+Focus In
+Added Toggle Key: Val=20 Mods=1 (from Shift+space)
+Added Toggle Key: Val=ff31 Mods=0 (from Hangul)
+Added Toggle Key: Val=20 Mods=4 (from Control+space)
+Added Hanja Key: Val=ff0d Mods=8 (from Alt+Return)
+Added Hanja Key: Val=1008ffb1 Mods=9 (from Shift+Alt+TouchpadOff)
+Config Loaded: Moa=1, Backspace=0, Shift=1
+Focus Out: Starting... (Hangul Mode: 1)
+Focus Out: No composed text.
+Focus Out: Finished.
+Focus In
+Added Toggle Key: Val=20 Mods=1 (from Shift+space)
+Added Toggle Key: Val=ff31 Mods=0 (from Hangul)
+Added Toggle Key: Val=20 Mods=4 (from Control+space)
+Added Hanja Key: Val=ff0d Mods=8 (from Alt+Return)
+Added Hanja Key: Val=1008ffb1 Mods=9 (from Shift+Alt+TouchpadOff)
+Config Loaded: Moa=1, Backspace=0, Shift=1
+Focus Out: Starting... (Hangul Mode: 1)
+Focus Out: No composed text.
+Focus Out: Finished.
+Focus In
+Added Toggle Key: Val=20 Mods=1 (from Shift+space)
+Added Toggle Key: Val=ff31 Mods=0 (from Hangul)
+Added Toggle Key: Val=20 Mods=4 (from Control+space)
+Added Hanja Key: Val=ff0d Mods=8 (from Alt+Return)
+Added Hanja Key: Val=1008ffb1 Mods=9 (from Shift+Alt+TouchpadOff)
+Config Loaded: Moa=1, Backspace=0, Shift=1
+Focus Out: Starting... (Hangul Mode: 1)
+Focus Out: No composed text.
+Focus Out: Finished.
+Focus In
+Added Toggle Key: Val=20 Mods=1 (from Shift+space)
+Added Toggle Key: Val=ff31 Mods=0 (from Hangul)
+Added Toggle Key: Val=20 Mods=4 (from Control+space)
+Added Hanja Key: Val=ff0d Mods=8 (from Alt+Return)
+Added Hanja Key: Val=1008ffb1 Mods=9 (from Shift+Alt+TouchpadOff)
+Config Loaded: Moa=1, Backspace=0, Shift=1
+Reset: Starting...
+Reset: Finished.
+Focus Out: Starting... (Hangul Mode: 1)
+Focus Out: No composed text.
+Focus Out: Finished.
+Focus In
+Added Toggle Key: Val=20 Mods=1 (from Shift+space)
+Added Toggle Key: Val=ff31 Mods=0 (from Hangul)
+Added Toggle Key: Val=20 Mods=4 (from Control+space)
+Added Hanja Key: Val=ff0d Mods=8 (from Alt+Return)
+Added Hanja Key: Val=1008ffb1 Mods=9 (from Shift+Alt+TouchpadOff)
+Config Loaded: Moa=1, Backspace=0, Shift=1
+Focus Out: Starting... (Hangul Mode: 1)
+Focus Out: No composed text.
+Focus Out: Finished.
+Focus In
+Added Toggle Key: Val=20 Mods=1 (from Shift+space)
+Added Toggle Key: Val=ff31 Mods=0 (from Hangul)
+Added Toggle Key: Val=20 Mods=4 (from Control+space)
+Added Hanja Key: Val=ff0d Mods=8 (from Alt+Return)
+Added Hanja Key: Val=1008ffb1 Mods=9 (from Shift+Alt+TouchpadOff)
+Config Loaded: Moa=1, Backspace=0, Shift=1
+Reset: Starting...
+Reset: Finished.
+Focus Out: Starting... (Hangul Mode: 1)
+Focus Out: No composed text.
+Focus Out: Finished.
+Focus In
+Added Toggle Key: Val=20 Mods=1 (from Shift+space)
+Added Toggle Key: Val=ff31 Mods=0 (from Hangul)
+Added Toggle Key: Val=20 Mods=4 (from Control+space)
+Added Hanja Key: Val=ff0d Mods=8 (from Alt+Return)
+Added Hanja Key: Val=1008ffb1 Mods=9 (from Shift+Alt+TouchpadOff)
+Config Loaded: Moa=1, Backspace=0, Shift=1
+Focus Out: Starting... (Hangul Mode: 1)
+Focus Out: No composed text.
+Focus Out: Finished.
+Focus In
+Added Toggle Key: Val=20 Mods=1 (from Shift+space)
+Added Toggle Key: Val=ff31 Mods=0 (from Hangul)
+Added Toggle Key: Val=20 Mods=4 (from Control+space)
+Added Hanja Key: Val=ff0d Mods=8 (from Alt+Return)
+Added Hanja Key: Val=1008ffb1 Mods=9 (from Shift+Alt+TouchpadOff)
+Config Loaded: Moa=1, Backspace=0, Shift=1
+Focus Out: Starting... (Hangul Mode: 1)
+Focus Out: No composed text.
+Focus Out: Finished.
+Focus In
+Added Toggle Key: Val=20 Mods=1 (from Shift+space)
+Added Toggle Key: Val=ff31 Mods=0 (from Hangul)
+Added Toggle Key: Val=20 Mods=4 (from Control+space)
+Added Hanja Key: Val=ff0d Mods=8 (from Alt+Return)
+Added Hanja Key: Val=1008ffb1 Mods=9 (from Shift+Alt+TouchpadOff)
+Config Loaded: Moa=1, Backspace=0, Shift=1
+Focus Out: Starting... (Hangul Mode: 1)
+Focus Out: No composed text.
+Focus Out: Finished.
+Focus In
+Added Toggle Key: Val=20 Mods=1 (from Shift+space)
+Added Toggle Key: Val=ff31 Mods=0 (from Hangul)
+Added Toggle Key: Val=20 Mods=4 (from Control+space)
+Added Hanja Key: Val=ff0d Mods=8 (from Alt+Return)
+Added Hanja Key: Val=1008ffb1 Mods=9 (from Shift+Alt+TouchpadOff)
+Config Loaded: Moa=1, Backspace=0, Shift=1
+Reset: Starting...
+Reset: Finished.
+Focus Out: Starting... (Hangul Mode: 1)
+Focus Out: No composed text.
+Focus Out: Finished.
+Focus In
+Added Toggle Key: Val=20 Mods=1 (from Shift+space)
+Added Toggle Key: Val=ff31 Mods=0 (from Hangul)
+Added Toggle Key: Val=20 Mods=4 (from Control+space)
+Added Hanja Key: Val=ff0d Mods=8 (from Alt+Return)
+Added Hanja Key: Val=1008ffb1 Mods=9 (from Shift+Alt+TouchpadOff)
+Config Loaded: Moa=1, Backspace=0, Shift=1
+Focus Out: Starting... (Hangul Mode: 1)
+Focus Out: No composed text.
+Focus Out: Finished.
+Focus In
+Added Toggle Key: Val=20 Mods=1 (from Shift+space)
+Added Toggle Key: Val=ff31 Mods=0 (from Hangul)
+Added Toggle Key: Val=20 Mods=4 (from Control+space)
+Added Hanja Key: Val=ff0d Mods=8 (from Alt+Return)
+Added Hanja Key: Val=1008ffb1 Mods=9 (from Shift+Alt+TouchpadOff)
+Config Loaded: Moa=1, Backspace=0, Shift=1
+Key: val=ff52 code=67 state=0 mode=1 hanja=0
+Key: val=ff52 code=67 state=40000000 mode=1 hanja=0
+Key: val=ff0d code=1c state=0 mode=1 hanja=0
+commit_full: Committed '', word_buffer=''.
+Key: val=ff0d code=1c state=40000000 mode=1 hanja=0
