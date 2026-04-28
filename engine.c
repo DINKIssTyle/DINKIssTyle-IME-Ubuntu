@@ -42,6 +42,10 @@ struct _DkstEngine {
   gboolean showing_indicator;
   gboolean enable_indicator;
 
+  // Properties (persistent references for IBus panel updates)
+  IBusPropList *prop_list;
+  IBusProperty *prop_input_mode;
+
   // Hanja feature
   gboolean hanja_mode;         // True when showing hanja candidates
   GPtrArray *hanja_candidates; // Current candidate list
@@ -75,6 +79,40 @@ static void dkst_engine_init(DkstEngine *engine) {
   engine->indicator_timeout_id = 0;
   engine->showing_indicator = FALSE;
   engine->enable_indicator = TRUE;
+
+  // Properties initialization
+  engine->prop_list = ibus_prop_list_new();
+  g_object_ref_sink(engine->prop_list);
+
+  // Create InputMode property (persistent, updated in-place)
+  IBusProperty *prop_input_mode = ibus_property_new(
+      "InputMode", PROP_TYPE_NORMAL,
+      ibus_text_new_from_string("한글 모드 (Hangul)"),
+      "/usr/share/ibus-dkst/KO.svg",
+      ibus_text_new_from_string(
+          "현재 한글 입력 모드입니다. 클릭하면 영문 모드로 전환합니다."),
+      TRUE, TRUE, PROP_STATE_UNCHECKED, NULL);
+  ibus_property_set_symbol(prop_input_mode, ibus_text_new_from_string("한"));
+  g_object_ref_sink(prop_input_mode);
+  ibus_prop_list_append(engine->prop_list, prop_input_mode);
+  engine->prop_input_mode = prop_input_mode;
+
+  // Settings Property
+  IBusProperty *prop_setup = ibus_property_new(
+      "Setup", PROP_TYPE_NORMAL,
+      ibus_text_new_from_string("환경설정 (Settings)"), "gtk-preferences",
+      ibus_text_new_from_string("Open Settings"), TRUE, TRUE,
+      PROP_STATE_UNCHECKED, NULL);
+  ibus_prop_list_append(engine->prop_list, prop_setup);
+
+  // Dictionary Editor Property
+  IBusProperty *prop_hanja_editor = ibus_property_new(
+      "HanjaEditor", PROP_TYPE_NORMAL,
+      ibus_text_new_from_string("사전 편집기 (Dictionary Editor)"),
+      "accessories-dictionary",
+      ibus_text_new_from_string("Edit Hanja Dictionary"), TRUE, TRUE,
+      PROP_STATE_UNCHECKED, NULL);
+  ibus_prop_list_append(engine->prop_list, prop_hanja_editor);
 
   // Hanja feature initialization
   engine->hanja_mode = FALSE;
@@ -111,6 +149,16 @@ static void dkst_engine_finalize(GObject *object) {
   if (engine->toggle_keys) {
     g_list_free_full(engine->toggle_keys, free_toggle_key);
     engine->toggle_keys = NULL;
+  }
+
+  // Properties cleanup
+  if (engine->prop_input_mode) {
+    g_object_unref(engine->prop_input_mode);
+    engine->prop_input_mode = NULL;
+  }
+  if (engine->prop_list) {
+    g_object_unref(engine->prop_list);
+    engine->prop_list = NULL;
   }
 
   // Hanja cleanup
@@ -346,7 +394,7 @@ static void update_preedit(DkstEngine *engine) {
                                               IBUS_ENGINE_PREEDIT_COMMIT);
   } else if (engine->showing_indicator) {
     // Show "한" or "EN"
-    const char *indicator_str = engine->is_hangul_mode ? "한" : "A";
+    const char *indicator_str = engine->is_hangul_mode ? "한" : "EN";
     IBusText *text = ibus_text_new_from_string(indicator_str);
     ibus_text_set_attributes(text, ibus_attr_list_new());
     // Use a different color or style for indicator?
@@ -363,26 +411,28 @@ static void update_preedit(DkstEngine *engine) {
   }
 }
 
-static IBusProperty *create_language_property(DkstEngine *engine) {
-  const char *symbol = engine->is_hangul_mode ? "한" : "A";
-  const char *label =
+static void update_language_property(DkstEngine *engine) {
+  IBusProperty *prop = engine->prop_input_mode;
+  if (prop == NULL)
+    return;
+
+  const char *symbol_str = engine->is_hangul_mode ? "가" : "A";
+  const char *icon_path = engine->is_hangul_mode
+                              ? "/usr/share/ibus-dkst/KO.svg"
+                              : "/usr/share/ibus-dkst/EN.svg";
+  const char *label_str =
       engine->is_hangul_mode ? "한글 모드 (Hangul)" : "영문 모드 (English)";
-  const char *tooltip =
+  const char *tooltip_str =
       engine->is_hangul_mode
           ? "현재 한글 입력 모드입니다. 클릭하면 영문 모드로 전환합니다."
           : "현재 영문 입력 모드입니다. 클릭하면 한글 모드로 전환합니다.";
 
-  IBusProperty *prop =
-      ibus_property_new("InputMode", PROP_TYPE_NORMAL,
-                        ibus_text_new_from_string(label), NULL,
-                        ibus_text_new_from_string(tooltip), TRUE, TRUE,
-                        PROP_STATE_UNCHECKED, NULL);
-  ibus_property_set_symbol(prop, ibus_text_new_from_string(symbol));
-  return prop;
-}
+  // Update the existing property in-place (IBus requires the same object)
+  ibus_property_set_symbol(prop, ibus_text_new_from_string(symbol_str));
+  ibus_property_set_icon(prop, icon_path);
+  ibus_property_set_label(prop, ibus_text_new_from_string(label_str));
+  ibus_property_set_tooltip(prop, ibus_text_new_from_string(tooltip_str));
 
-static void update_language_property(DkstEngine *engine) {
-  IBusProperty *prop = create_language_property(engine);
   ibus_engine_update_property((IBusEngine *)engine, prop);
 }
 
@@ -657,30 +707,11 @@ static void check_and_commit_pending(DkstEngine *engine) {
 
 // --- Properties & Setup ---
 static void dkst_engine_register_props(DkstEngine *engine) {
-  IBusPropList *props = ibus_prop_list_new();
+  // Update the InputMode property to reflect current state before registering
+  update_language_property(engine);
 
-  IBusProperty *prop_input_mode = create_language_property(engine);
-  ibus_prop_list_append(props, prop_input_mode);
-
-  // Settings Property
-  IBusProperty *prop_setup =
-      ibus_property_new("Setup", PROP_TYPE_NORMAL,
-                        ibus_text_new_from_string("환경설정 (Settings)"),
-                        "gtk-preferences", // Standard icon
-                        ibus_text_new_from_string("Open Settings"), TRUE, TRUE,
-                        PROP_STATE_UNCHECKED, NULL);
-  ibus_prop_list_append(props, prop_setup);
-
-  // Dictionary Editor Property
-  IBusProperty *prop_hanja_editor = ibus_property_new(
-      "HanjaEditor", PROP_TYPE_NORMAL,
-      ibus_text_new_from_string("사전 편집기 (Dictionary Editor)"),
-      "accessories-dictionary",
-      ibus_text_new_from_string("Edit Hanja Dictionary"), TRUE, TRUE,
-      PROP_STATE_UNCHECKED, NULL);
-  ibus_prop_list_append(props, prop_hanja_editor);
-
-  ibus_engine_register_properties((IBusEngine *)engine, props);
+  // Register the persistent prop_list (created in init)
+  ibus_engine_register_properties((IBusEngine *)engine, engine->prop_list);
 }
 
 static void dkst_engine_property_activate(IBusEngine *e, const gchar *prop_name,
