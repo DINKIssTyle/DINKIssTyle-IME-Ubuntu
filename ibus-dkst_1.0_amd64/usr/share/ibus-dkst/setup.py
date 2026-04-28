@@ -99,7 +99,7 @@ class SettingsWindow(Gtk.Window):
         vbox_gen.pack_start(self.check_moa, False, False, 0)
 
         # Indicator
-        self.check_indicator = Gtk.CheckButton(label="Show Language Indicator (한/EN)")
+        self.check_indicator = Gtk.CheckButton(label="Show Cursor Language Indicator (한/A)")
         vbox_gen.pack_start(self.check_indicator, False, False, 0)
         
         # Backspace Mode

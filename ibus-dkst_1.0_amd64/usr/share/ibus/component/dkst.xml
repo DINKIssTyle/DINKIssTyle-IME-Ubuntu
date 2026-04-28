@@ -17,7 +17,7 @@
 			<description>DKST Korean Input Method</description>
 			<language>ko</language>
 			<license>GPL</license>
-			<author>Dinki</author>
+			<author>DINKIssTyle</author>
 			<icon>/usr/share/ibus-dkst/icon.png</icon>
 			<setup>/usr/share/ibus-dkst/setup.py</setup>
 			<symbol>&#xD55C;</symbol>

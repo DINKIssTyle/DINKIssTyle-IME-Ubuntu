@@ -394,7 +394,7 @@ static void update_preedit(DkstEngine *engine) {
                                               IBUS_ENGINE_PREEDIT_COMMIT);
   } else if (engine->showing_indicator) {
     // Show "한" or "EN"
-    const char *indicator_str = engine->is_hangul_mode ? "한" : "EN";
+    const char *indicator_str = engine->is_hangul_mode ? "한" : "A";
     IBusText *text = ibus_text_new_from_string(indicator_str);
     ibus_text_set_attributes(text, ibus_attr_list_new());
     // Use a different color or style for indicator?
@@ -416,7 +416,7 @@ static void update_language_property(DkstEngine *engine) {
   if (prop == NULL)
     return;
 
-  const char *symbol_str = engine->is_hangul_mode ? "가" : "A";
+  const char *symbol_str = engine->is_hangul_mode ? "한" : "A";
   const char *icon_path = engine->is_hangul_mode
                               ? "/usr/share/ibus-dkst/KO.svg"
                               : "/usr/share/ibus-dkst/EN.svg";

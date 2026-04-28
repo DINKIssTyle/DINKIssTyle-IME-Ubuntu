@@ -1,0 +1,18 @@
+/* Created by DINKIssTyle on 2026. Copyright (C) 2026 DINKI'ssTyle. All rights reserved. */
+
+/* DKST IME Indicator - Panel Icon Styles */
+.dkst-indicator-icon {
+  icon-size: 16px;
+  padding: 0 4px;
+}
+
+/* Ensure proper alignment in the panel */
+.dkst-indicator-box {
+  padding: 0 4px;
+}
+
+/* Menu header (mode display) - slightly bolder */
+.dkst-menu-header {
+  font-weight: bold;
+  font-size: 1em;
+}
