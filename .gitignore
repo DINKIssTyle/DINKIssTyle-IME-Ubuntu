@@ -1,3 +1,15 @@
 
 DINKIssTyle-IME-Ubuntu.code-workspace
 debug_log.txt
+
+# Build artifacts
+*.o
+dkst-ime
+test_iss
+test_hangul_debug
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+ibus-dkst_*_*/

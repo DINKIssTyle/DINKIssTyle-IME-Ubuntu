@@ -346,7 +346,7 @@ static void update_preedit(DkstEngine *engine) {
                                               IBUS_ENGINE_PREEDIT_COMMIT);
   } else if (engine->showing_indicator) {
     // Show "한" or "EN"
-    const char *indicator_str = engine->is_hangul_mode ? "한" : "영";
+    const char *indicator_str = engine->is_hangul_mode ? "한" : "A";
     IBusText *text = ibus_text_new_from_string(indicator_str);
     ibus_text_set_attributes(text, ibus_attr_list_new());
     // Use a different color or style for indicator?
@@ -361,6 +361,29 @@ static void update_preedit(DkstEngine *engine) {
   } else {
     ibus_engine_hide_preedit_text((IBusEngine *)engine);
   }
+}
+
+static IBusProperty *create_language_property(DkstEngine *engine) {
+  const char *symbol = engine->is_hangul_mode ? "한" : "A";
+  const char *label =
+      engine->is_hangul_mode ? "한글 모드 (Hangul)" : "영문 모드 (English)";
+  const char *tooltip =
+      engine->is_hangul_mode
+          ? "현재 한글 입력 모드입니다. 클릭하면 영문 모드로 전환합니다."
+          : "현재 영문 입력 모드입니다. 클릭하면 한글 모드로 전환합니다.";
+
+  IBusProperty *prop =
+      ibus_property_new("InputMode", PROP_TYPE_NORMAL,
+                        ibus_text_new_from_string(label), NULL,
+                        ibus_text_new_from_string(tooltip), TRUE, TRUE,
+                        PROP_STATE_UNCHECKED, NULL);
+  ibus_property_set_symbol(prop, ibus_text_new_from_string(symbol));
+  return prop;
+}
+
+static void update_language_property(DkstEngine *engine) {
+  IBusProperty *prop = create_language_property(engine);
+  ibus_engine_update_property((IBusEngine *)engine, prop);
 }
 
 static void clear_indicator(DkstEngine *engine) {
@@ -386,6 +409,8 @@ static gboolean on_indicator_timeout(gpointer data) {
 }
 
 static void show_indicator(DkstEngine *engine) {
+  update_language_property(engine);
+
   if (!engine->enable_indicator)
     return;
 
@@ -634,6 +659,9 @@ static void check_and_commit_pending(DkstEngine *engine) {
 static void dkst_engine_register_props(DkstEngine *engine) {
   IBusPropList *props = ibus_prop_list_new();
 
+  IBusProperty *prop_input_mode = create_language_property(engine);
+  ibus_prop_list_append(props, prop_input_mode);
+
   // Settings Property
   IBusProperty *prop_setup =
       ibus_property_new("Setup", PROP_TYPE_NORMAL,
@@ -679,6 +707,10 @@ static void dkst_engine_property_activate(IBusEngine *e, const gchar *prop_name,
       debug_log("Failed to launch hanja editor: %s\n", error->message);
       g_error_free(error);
     }
+  } else if (g_strcmp0(prop_name, "InputMode") == 0) {
+    commit_full((DkstEngine *)e);
+    ((DkstEngine *)e)->is_hangul_mode = !((DkstEngine *)e)->is_hangul_mode;
+    show_indicator((DkstEngine *)e);
   }
 }
 
@@ -813,7 +845,6 @@ static gboolean dkst_engine_process_key_event(IBusEngine *e, guint keyval,
           debug_log("Toggle Key Matched! Toggling mode.\n");
           commit_full(engine);
           engine->is_hangul_mode = !engine->is_hangul_mode;
-          // update_preedit(engine); // Called inside show_indicator
           show_indicator(engine);
           return TRUE;
         }
@@ -951,6 +982,7 @@ static void dkst_engine_focus_in(IBusEngine *e) {
   load_config(engine);
   // Register Properties
   dkst_engine_register_props(engine);
+  update_language_property(engine);
 }
 
 static void dkst_engine_focus_out(IBusEngine *e) {
