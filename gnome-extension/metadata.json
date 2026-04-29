@@ -3,7 +3,7 @@
   "description": "DKST 한글 입력기의 한/영 상태를 상단바에 아이콘으로 표시합니다.",
   "uuid": "dkst-indicator@dinkisstyle.com",
   "shell-version": ["45", "46", "47", "48", "49", "50"],
-  "version": 1,
+  "version": 2,
   "url": "https://github.com/DINKIssTyle/DINKIssTyle-IME-Ubuntu",
   "settings-schema": ""
 }

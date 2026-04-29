@@ -90,8 +90,9 @@ class DkstIndicator extends PanelMenu.Button {
         this._extensionPath = extensionPath;
 
         // Determine icon paths: prefer installed location, fallback to extension dir
-        this._koIconPath = `${ICON_DIR}/KO.svg`;
-        this._enIconPath = `${ICON_DIR}/EN.svg`;
+        // Use symbolic icons for proper GNOME Shell theme recoloring
+        this._koIconPath = `${ICON_DIR}/KO-symbolic.svg`;
+        this._enIconPath = `${ICON_DIR}/EN-symbolic.svg`;
 
         // Fallback to extension-bundled icons if system icons don't exist
         const koFile = Gio.File.new_for_path(this._koIconPath);
@@ -101,11 +102,14 @@ class DkstIndicator extends PanelMenu.Button {
         }
 
         // Create icon widget
+        // Use 'system-status-icon' style class for GNOME Shell theme recoloring
         this._icon = new St.Icon({
             gicon: Gio.icon_new_for_string(this._koIconPath),
             style_class: 'system-status-icon dkst-indicator-icon',
+            icon_size: 16,
         });
         this.add_child(this._icon);
+        this.add_style_class_name('dkst-indicator-button');
 
         this._isHangulMode = true;
 
@@ -128,12 +132,12 @@ class DkstIndicator extends PanelMenu.Button {
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
 
         // ── Settings (환경설정) ──
-        const settingsItem = new PopupMenu.PopupMenuItem('⚙  환경설정');
+        const settingsItem = new PopupMenu.PopupMenuItem('환경설정');
         settingsItem.connect('activate', () => this._launchSetup());
         this.menu.addMenuItem(settingsItem);
 
         // ── Dictionary Editor (사전편집기) ──
-        const dictItem = new PopupMenu.PopupMenuItem('📖  사전 편집기');
+        const dictItem = new PopupMenu.PopupMenuItem('사전 편집기');
         dictItem.connect('activate', () => this._launchDictEditor());
         this.menu.addMenuItem(dictItem);
 
@@ -154,7 +158,7 @@ class DkstIndicator extends PanelMenu.Button {
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
 
         // ── About (정보) ──
-        const aboutItem = new PopupMenu.PopupMenuItem('ℹ  DKST 정보');
+        const aboutItem = new PopupMenu.PopupMenuItem('DKST 정보');
         aboutItem.connect('activate', () => this._showAbout());
         this.menu.addMenuItem(aboutItem);
     }
@@ -220,21 +224,16 @@ class DkstIndicator extends PanelMenu.Button {
 
     /**
      * Apply IBus icon visibility based on current config.
-     * Hides/shows the IBus system tray icon via gsettings.
+     * Hides/shows the GNOME Shell IBus input source indicator.
+     *
+     * This follows Customize IBus: toggle the keyboard indicator container
+     * inside GNOME Shell instead of changing IBus' persistent gsettings.
      */
     _applyIBusIconVisibility() {
         try {
-            if (this._config.hideIBusIcon) {
-                // Hide IBus icon by setting icon to empty
-                GLib.spawn_command_line_async(
-                    'gsettings set org.freedesktop.ibus.panel show-icon-on-systray false'
-                );
-            } else {
-                // Show IBus icon
-                GLib.spawn_command_line_async(
-                    'gsettings set org.freedesktop.ibus.panel show-icon-on-systray true'
-                );
-            }
+            const inputSourceIndicator = Main.panel.statusArea['keyboard'];
+            if (inputSourceIndicator?.container)
+                inputSourceIndicator.container.visible = !this._config.hideIBusIcon;
         } catch (e) {
             console.error(`[DKST] Failed to toggle IBus icon: ${e.message}`);
         }
@@ -291,9 +290,7 @@ export default class DkstIndicatorExtension extends Extension {
         this._checkCurrentSource();
 
         // Apply saved IBus icon visibility preference
-        if (this._indicator.getHideIBusIcon()) {
-            this._indicator._applyIBusIconVisibility();
-        }
+        this._indicator._applyIBusIconVisibility();
     }
 
     disable() {
@@ -304,13 +301,7 @@ export default class DkstIndicatorExtension extends Extension {
         this._showDefaultIndicator();
 
         // Restore IBus icon visibility on disable
-        try {
-            GLib.spawn_command_line_async(
-                'gsettings set org.freedesktop.ibus.panel show-icon-on-systray true'
-            );
-        } catch (e) {
-            // Ignore errors during cleanup
-        }
+        this._showIBusIndicatorContainer();
 
         if (this._indicator) {
             this._indicator.destroy();
@@ -495,6 +486,19 @@ export default class DkstIndicatorExtension extends Extension {
             const indicator = Main.panel.statusArea['keyboard'];
             if (indicator)
                 indicator.show();
+        }
+    }
+
+    /**
+     * Restore the GNOME Shell IBus input source indicator container.
+     */
+    _showIBusIndicatorContainer() {
+        try {
+            const inputSourceIndicator = Main.panel.statusArea['keyboard'];
+            if (inputSourceIndicator?.container)
+                inputSourceIndicator.container.visible = true;
+        } catch (e) {
+            console.error(`[DKST] Failed to restore IBus indicator: ${e.message}`);
         }
     }
 

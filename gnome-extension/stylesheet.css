@@ -3,12 +3,13 @@
 /* DKST IME Indicator - Panel Icon Styles */
 .dkst-indicator-icon {
   icon-size: 16px;
-  padding: 0 4px;
+  padding: 0;
 }
 
-/* Ensure proper alignment in the panel */
-.dkst-indicator-box {
-  padding: 0 4px;
+/* Reduce the width of the button in the panel */
+.dkst-indicator-button {
+  padding-left: 1px;
+  padding-right: 1px;
 }
 
 /* Menu header (mode display) - slightly bolder */

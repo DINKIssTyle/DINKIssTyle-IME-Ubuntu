@@ -7,11 +7,11 @@
       }
 
       .cls-3 {
-        fill: #1f1a17;
+        fill: #e0e5e8;
       }
 
       .cls-2 {
-        stroke: #1f1a17;
+        stroke: #e0e5e8;
         stroke-miterlimit: 10;
       }
 
