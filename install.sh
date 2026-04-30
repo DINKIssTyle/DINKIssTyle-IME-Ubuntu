@@ -107,8 +107,7 @@ run_as_root install -m 755 setup.py "$DEST_DIR/setup.py"
 run_as_root install -m 755 hanja_editor.py "$DEST_DIR/hanja_editor.py"
 run_as_root install -m 644 hanja.txt "$DEST_DIR/hanja.txt"
 run_as_root install -m 644 icon.png "$DEST_DIR/icon.png"
-run_as_root install -m 644 KO.svg "$DEST_DIR/KO.svg"
-run_as_root install -m 644 EN.svg "$DEST_DIR/EN.svg"
+
 run_as_root install -m 644 config.ini "$DEST_DIR/config.ini"
 
 # Copy Component XML

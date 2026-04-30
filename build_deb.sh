@@ -34,8 +34,7 @@ cp setup.py "$DIR_NAME/usr/share/ibus-dkst/"
 cp hanja_editor.py "$DIR_NAME/usr/share/ibus-dkst/"
 cp hanja.txt "$DIR_NAME/usr/share/ibus-dkst/"
 cp icon.png "$DIR_NAME/usr/share/ibus-dkst/"
-cp KO.svg "$DIR_NAME/usr/share/ibus-dkst/"
-cp EN.svg "$DIR_NAME/usr/share/ibus-dkst/"
+
 # Copy dummy config for reference
 cp config.ini "$DIR_NAME/usr/share/ibus-dkst/" 
 
@@ -48,8 +47,7 @@ chmod 755 "$DIR_NAME/usr/share/ibus-dkst/setup.py"
 chmod 755 "$DIR_NAME/usr/share/ibus-dkst/hanja_editor.py"
 chmod 644 "$DIR_NAME/usr/share/ibus-dkst/hanja.txt"
 chmod 644 "$DIR_NAME/usr/share/ibus-dkst/icon.png"
-chmod 644 "$DIR_NAME/usr/share/ibus-dkst/KO.svg"
-chmod 644 "$DIR_NAME/usr/share/ibus-dkst/EN.svg"
+
 chmod 644 "$DIR_NAME/usr/share/ibus-dkst/config.ini"
 chmod 644 "$DIR_NAME/usr/share/ibus/component/dkst.xml"
 

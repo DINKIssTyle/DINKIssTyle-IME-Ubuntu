@@ -88,7 +88,7 @@ static void dkst_engine_init(DkstEngine *engine) {
   IBusProperty *prop_input_mode = ibus_property_new(
       "InputMode", PROP_TYPE_NORMAL,
       ibus_text_new_from_string("한글 모드 (Hangul)"),
-      "/usr/share/ibus-dkst/KO.svg",
+      "",
       ibus_text_new_from_string(
           "현재 한글 입력 모드입니다. 클릭하면 영문 모드로 전환합니다."),
       TRUE, TRUE, PROP_STATE_UNCHECKED, NULL);
@@ -417,9 +417,6 @@ static void update_language_property(DkstEngine *engine) {
     return;
 
   const char *symbol_str = engine->is_hangul_mode ? "한" : "A";
-  const char *icon_path = engine->is_hangul_mode
-                              ? "/usr/share/ibus-dkst/KO.svg"
-                              : "/usr/share/ibus-dkst/EN.svg";
   const char *label_str =
       engine->is_hangul_mode ? "한글 모드 (Hangul)" : "영문 모드 (English)";
   const char *tooltip_str =
@@ -429,7 +426,7 @@ static void update_language_property(DkstEngine *engine) {
 
   // Update the existing property in-place (IBus requires the same object)
   ibus_property_set_symbol(prop, ibus_text_new_from_string(symbol_str));
-  ibus_property_set_icon(prop, icon_path);
+  ibus_property_set_icon(prop, "");
   ibus_property_set_label(prop, ibus_text_new_from_string(label_str));
   ibus_property_set_tooltip(prop, ibus_text_new_from_string(tooltip_str));
 
