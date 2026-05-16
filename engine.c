@@ -105,12 +105,12 @@ static void dkst_engine_init(DkstEngine *engine) {
       PROP_STATE_UNCHECKED, NULL);
   ibus_prop_list_append(engine->prop_list, prop_setup);
 
-  // Dictionary Editor Property
+  // Dictionary Property
   IBusProperty *prop_hanja_editor = ibus_property_new(
       "HanjaEditor", PROP_TYPE_NORMAL,
-      ibus_text_new_from_string("사전 편집기 (Dictionary Editor)"),
+      ibus_text_new_from_string("사전 (Dictionary)"),
       "accessories-dictionary",
-      ibus_text_new_from_string("Edit Hanja Dictionary"), TRUE, TRUE,
+      ibus_text_new_from_string("Open Dictionary Settings"), TRUE, TRUE,
       PROP_STATE_UNCHECKED, NULL);
   ibus_prop_list_append(engine->prop_list, prop_hanja_editor);
 
@@ -726,8 +726,9 @@ static void dkst_engine_property_activate(IBusEngine *e, const gchar *prop_name,
       g_error_free(error);
     }
   } else if (g_strcmp0(prop_name, "HanjaEditor") == 0) {
-    // Launch hanja_editor.py
-    gchar *argv[] = {"/usr/share/ibus-dkst/hanja_editor.py", NULL};
+    // Launch the integrated preferences window on the dictionary tab.
+    gchar *argv[] = {"/usr/share/ibus-dkst/setup.py", "--tab", "dictionary",
+                     NULL};
     GError *error = NULL;
     g_spawn_async(NULL, argv, NULL, G_SPAWN_SEARCH_PATH, NULL, NULL, NULL,
                   &error);

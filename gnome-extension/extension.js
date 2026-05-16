@@ -11,7 +11,7 @@
  *
  * Features:
  *   - KO/EN icon indicator in the top panel
- *   - Popup menu with Settings, Dictionary Editor, IBus icon toggle
+ *   - Popup menu with integrated Settings, Dictionary tab, IBus icon toggle
  *   - Persistent IBus icon hide preference
  */
 
@@ -29,7 +29,6 @@ import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 const DKST_ENGINE_NAME = 'dinkisstyle';
 const ICON_DIR = '/usr/share/ibus-dkst';
 const SETUP_PATH = '/usr/share/ibus-dkst/setup.py';
-const HANJA_EDITOR_PATH = '/usr/share/ibus-dkst/hanja_editor.py';
 const CONFIG_DIR = GLib.get_home_dir() + '/.config/ibus-dkst';
 const EXT_CONFIG_FILE = CONFIG_DIR + '/extension.json';
 
@@ -136,8 +135,8 @@ class DkstIndicator extends PanelMenu.Button {
         settingsItem.connect('activate', () => this._launchSetup());
         this.menu.addMenuItem(settingsItem);
 
-        // ── Dictionary Editor (사전편집기) ──
-        const dictItem = new PopupMenu.PopupMenuItem('사전 편집기');
+        // ── Dictionary (사전) ──
+        const dictItem = new PopupMenu.PopupMenuItem('사전');
         dictItem.connect('activate', () => this._launchDictEditor());
         this.menu.addMenuItem(dictItem);
 
@@ -187,16 +186,17 @@ class DkstIndicator extends PanelMenu.Button {
     /**
      * Launch the DKST setup/preferences window.
      */
-    _launchSetup() {
+    _launchSetup(tab = null) {
         try {
+            const arg = tab ? ` --tab ${tab}` : '';
             // Try system-installed path first
             const sysFile = Gio.File.new_for_path(SETUP_PATH);
             if (sysFile.query_exists(null)) {
-                GLib.spawn_command_line_async(`python3 ${SETUP_PATH}`);
+                GLib.spawn_command_line_async(`python3 ${SETUP_PATH}${arg}`);
             } else {
                 // Fallback to source directory relative path
                 const localPath = `${this._extensionPath}/../setup.py`;
-                GLib.spawn_command_line_async(`python3 ${localPath}`);
+                GLib.spawn_command_line_async(`python3 ${localPath}${arg}`);
             }
         } catch (e) {
             console.error(`[DKST] Failed to launch setup: ${e.message}`);
@@ -207,19 +207,7 @@ class DkstIndicator extends PanelMenu.Button {
      * Launch the DKST hanja dictionary editor.
      */
     _launchDictEditor() {
-        try {
-            // Try system-installed path first
-            const sysFile = Gio.File.new_for_path(HANJA_EDITOR_PATH);
-            if (sysFile.query_exists(null)) {
-                GLib.spawn_command_line_async(`python3 ${HANJA_EDITOR_PATH}`);
-            } else {
-                // Fallback to source directory relative path
-                const localPath = `${this._extensionPath}/../hanja_editor.py`;
-                GLib.spawn_command_line_async(`python3 ${localPath}`);
-            }
-        } catch (e) {
-            console.error(`[DKST] Failed to launch dictionary editor: ${e.message}`);
-        }
+        this._launchSetup('dictionary');
     }
 
     /**
