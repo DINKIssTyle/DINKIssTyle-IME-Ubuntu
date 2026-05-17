@@ -1,4 +1,6 @@
 
+/* Created by DINKIssTyle on 2026. Copyright (C) 2026 DINKI'ssTyle. All rights reserved. */
+
 #include "hanja_dict.h"
 #include <stdio.h>
 #include <stdlib.h>

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Created by DINKIssTyle on 2026. Copyright (C) 2026 DINKI'ssTyle. All rights reserved.
 import argparse
 import configparser
 import os
