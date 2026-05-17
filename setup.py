@@ -3,6 +3,7 @@
 import argparse
 import configparser
 import os
+import shlex
 import shutil
 import signal
 import subprocess
@@ -111,6 +112,7 @@ class SettingsWindow(Gtk.Window):
         self.config = configparser.ConfigParser()
         self.config.optionxform = str
         self.dictionary_entries = []
+        self.system_dictionary_dirty = False
 
         outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
         self.add(outer)
@@ -484,6 +486,7 @@ class SettingsWindow(Gtk.Window):
 
     def load_dictionary(self):
         self.dict_store.clear()
+        self.system_dictionary_dirty = False
         
         # Load System Dictionary (Source 0)
         if os.path.exists(SYSTEM_DICT_FILE):
@@ -556,21 +559,17 @@ class SettingsWindow(Gtk.Window):
             except Exception:
                 pass
 
-        if new_system_content.strip() != old_system_content.strip():
+        if self.system_dictionary_dirty and new_system_content.strip() != old_system_content.strip():
             with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", delete=False) as tmp:
                 tmp.write(new_system_content)
                 tmp_path = tmp.name
 
             try:
-                shutil.copyfile(tmp_path, SYSTEM_DICT_FILE)
-                os.chmod(SYSTEM_DICT_FILE, 0o644)
-            except PermissionError:
-                # Combine commands into one pkexec call to prompt only once
-                command = f"cp {tmp_path} {SYSTEM_DICT_FILE} && chmod 644 {SYSTEM_DICT_FILE}"
-                subprocess.run(["pkexec", "sh", "-c", command], check=True)
+                self.install_system_file(tmp_path, SYSTEM_DICT_FILE)
             finally:
                 if os.path.exists(tmp_path):
                     os.unlink(tmp_path)
+            self.system_dictionary_dirty = False
 
     def clean_candidates(self, text):
         values = []
@@ -612,22 +611,26 @@ class SettingsWindow(Gtk.Window):
             with open(remote_path, "w", encoding="utf-8") as file:
                 file.write("\n".join(remote_lines).rstrip() + "\n")
 
-            # Copy to system path
-            try:
-                os.makedirs(os.path.dirname(SYSTEM_DICT_FILE), exist_ok=True)
-                shutil.copyfile(remote_path, SYSTEM_DICT_FILE)
-            except PermissionError:
-                # Use pkexec for root permission
-                # We also set permissions to 644 to ensure it's readable
-                copy_cmd = ["pkexec", "cp", remote_path, SYSTEM_DICT_FILE]
-                chmod_cmd = ["pkexec", "chmod", "644", SYSTEM_DICT_FILE]
-                
-                result = subprocess.run(copy_cmd, text=True, capture_output=True, check=False)
-                if result.returncode != 0:
-                    detail = result.stderr.strip() or result.stdout.strip()
-                    raise RuntimeError(detail or "관리자 권한 복사에 실패했습니다.")
-                
-                subprocess.run(chmod_cmd, check=False)
+            self.install_system_file(remote_path, SYSTEM_DICT_FILE)
+
+    def install_system_file(self, src, dest):
+        try:
+            os.makedirs(os.path.dirname(dest), exist_ok=True)
+            shutil.copyfile(src, dest)
+            os.chmod(dest, 0o644)
+        except PermissionError:
+            command = "install -D -m 644 {} {}".format(
+                shlex.quote(src), shlex.quote(dest)
+            )
+            result = subprocess.run(
+                ["pkexec", "sh", "-c", command],
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            if result.returncode != 0:
+                detail = result.stderr.strip() or result.stdout.strip()
+                raise RuntimeError(detail or "관리자 권한 복사에 실패했습니다.")
 
     def restart_ibus(self):
         try:
@@ -674,11 +677,15 @@ class SettingsWindow(Gtk.Window):
         clean_key = new_text.replace(":", "").strip()
         # Convert filter path to child path
         child_path = self.dict_filter.convert_path_to_child_path(Gtk.TreePath(path))
+        if self.dict_store[child_path][2] == 0:
+            self.system_dictionary_dirty = True
         self.dict_store[child_path][0] = clean_key
 
     def on_dict_value_edited(self, widget, path, new_text):
         clean_values = self.clean_candidates(new_text)
         child_path = self.dict_filter.convert_path_to_child_path(Gtk.TreePath(path))
+        if self.dict_store[child_path][2] == 0:
+            self.system_dictionary_dirty = True
         self.dict_store[child_path][1] = clean_values
 
     def on_add_dictionary_entry(self, widget):
@@ -692,6 +699,8 @@ class SettingsWindow(Gtk.Window):
         model, iterator = selection.get_selected()
         if iterator:
             child_iter = self.dict_filter.convert_iter_to_child_iter(iterator)
+            if self.dict_store[child_iter][2] == 0:
+                self.system_dictionary_dirty = True
             self.dict_store.remove(child_iter)
 
     def on_refresh_dictionary_clicked(self, widget):
@@ -720,6 +729,7 @@ class SettingsWindow(Gtk.Window):
 
         try:
             self.update_system_dictionary()
+            self.load_dictionary()
             self.restart_ibus()
             self.show_info("업데이트 완료", "한자 사전이 업데이트되고 IBus가 재시작되었습니다.")
         except urllib.error.URLError as exc:

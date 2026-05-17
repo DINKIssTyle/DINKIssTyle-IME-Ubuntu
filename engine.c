@@ -105,19 +105,11 @@ static void dkst_engine_init(DkstEngine *engine) {
       PROP_STATE_UNCHECKED, NULL);
   ibus_prop_list_append(engine->prop_list, prop_setup);
 
-  // Dictionary Property
-  IBusProperty *prop_hanja_editor = ibus_property_new(
-      "HanjaEditor", PROP_TYPE_NORMAL,
-      ibus_text_new_from_string("사전 (Dictionary)"),
-      "accessories-dictionary",
-      ibus_text_new_from_string("Open Dictionary Settings"), TRUE, TRUE,
-      PROP_STATE_UNCHECKED, NULL);
-  ibus_prop_list_append(engine->prop_list, prop_hanja_editor);
-
   // Hanja feature initialization
   engine->hanja_mode = FALSE;
   engine->hanja_candidates = NULL;
   engine->hanja_source = NULL;
+  engine->word_buffer = NULL;
 
   // Load hanja dictionary (once, shared)
   if (!g_hanja_dict_loaded) {
@@ -169,6 +161,10 @@ static void dkst_engine_finalize(GObject *object) {
   if (engine->hanja_source) {
     g_free(engine->hanja_source);
     engine->hanja_source = NULL;
+  }
+  if (engine->word_buffer) {
+    g_free(engine->word_buffer);
+    engine->word_buffer = NULL;
   }
 
   G_OBJECT_CLASS(dkst_engine_parent_class)->finalize(object);
@@ -474,6 +470,13 @@ static void show_indicator(DkstEngine *engine) {
 // Forward declaration for commit_string (used by select_hanja_candidate)
 static void commit_string(DkstEngine *engine, const char *str);
 
+static void delete_previous_committed_text(DkstEngine *engine, glong nchars) {
+  for (glong i = 0; i < nchars; i++) {
+    ibus_engine_forward_key_event((IBusEngine *)engine, IBUS_KEY_BackSpace, 0,
+                                  0);
+  }
+}
+
 // --- Hanja Feature ---
 static void hide_hanja_candidates(DkstEngine *engine) {
   if (engine->hanja_mode) {
@@ -595,6 +598,8 @@ static void select_hanja_candidate(DkstEngine *engine, guint index) {
   if (space)
     *space = '\0';
 
+  gboolean has_composed = dkst_hangul_has_composed(&engine->hangul);
+
   // The lookup source may include text that has already been committed into
   // the client plus the current preedit syllable. Resetting preedit only removes
   // the latter, so explicitly delete the committed part before committing the
@@ -602,14 +607,23 @@ static void select_hanja_candidate(DkstEngine *engine, guint index) {
   glong committed_source_len = 0;
   if (engine->hanja_source) {
     committed_source_len = g_utf8_strlen(engine->hanja_source, -1);
-    if (dkst_hangul_has_composed(&engine->hangul) && committed_source_len > 0) {
+    if (has_composed && committed_source_len > 0) {
       committed_source_len--;
     }
   }
+
+  // Clear composed text before deleting already committed text.
+  dkst_hangul_reset(&engine->hangul);
+  ibus_engine_hide_preedit_text((IBusEngine *)engine);
+
   if (committed_source_len > 0) {
-    ibus_engine_delete_surrounding_text((IBusEngine *)engine,
-                                        -committed_source_len,
-                                        committed_source_len);
+    // Chinese/Japanese IMEs usually keep the conversion source in preedit until
+    // a candidate is selected. This engine has already committed preceding
+    // Hangul syllables so word conversion must erase them first. Chromium-based
+    // clients often ignore delete_surrounding_text(), and IBus capabilities are
+    // not reliable enough to detect that, so send real Backspace key events for
+    // the committed part before committing the selected candidate.
+    delete_previous_committed_text(engine, committed_source_len);
   }
 
   // Clear word buffer when hanja is selected (word is replaced)
@@ -617,10 +631,6 @@ static void select_hanja_candidate(DkstEngine *engine, guint index) {
     g_free(engine->word_buffer);
     engine->word_buffer = NULL;
   }
-
-  // Clear composed text
-  dkst_hangul_reset(&engine->hangul);
-  ibus_engine_hide_preedit_text((IBusEngine *)engine);
 
   // Commit selected hanja
   commit_string(engine, commit_str);
@@ -740,17 +750,6 @@ static void dkst_engine_property_activate(IBusEngine *e, const gchar *prop_name,
                   &error);
     if (error) {
       debug_log("Failed to launch setup: %s\n", error->message);
-      g_error_free(error);
-    }
-  } else if (g_strcmp0(prop_name, "HanjaEditor") == 0) {
-    // Launch the integrated preferences window on the dictionary tab.
-    gchar *argv[] = {"/usr/share/ibus-dkst/setup.py", "--tab", "dictionary",
-                     NULL};
-    GError *error = NULL;
-    g_spawn_async(NULL, argv, NULL, G_SPAWN_SEARCH_PATH, NULL, NULL, NULL,
-                  &error);
-    if (error) {
-      debug_log("Failed to launch hanja editor: %s\n", error->message);
       g_error_free(error);
     }
   } else if (g_strcmp0(prop_name, "InputMode") == 0) {
@@ -1012,6 +1011,12 @@ static void dkst_engine_focus_in(IBusEngine *e) {
   DkstEngine *engine = (DkstEngine *)e;
   debug_log("Focus In\n");
 
+  // Tell IBus and the client that this engine uses surrounding text. Word-level
+  // hanja conversion needs this to replace syllables already committed before
+  // the current preedit, and Chromium-based clients are especially sensitive to
+  // the engine requesting it explicitly.
+  ibus_engine_get_surrounding_text(e, NULL, NULL, NULL);
+
   // Safety: Ensure no leftover state from previous interactions
   if (dkst_hangul_has_composed(&engine->hangul)) {
     debug_log("Focus In: Cleansing leftover state. (Cho=%x Jung=%x Jong=%x)\n",
@@ -1069,6 +1074,12 @@ static void dkst_engine_disable(IBusEngine *e) {
   commit_full(engine);
 }
 
+static void dkst_engine_enable(IBusEngine *e) {
+  // Per IBus API docs, calling this with NULL outputs in enable tells the input
+  // context that the engine will utilize surrounding text.
+  ibus_engine_get_surrounding_text(e, NULL, NULL, NULL);
+}
+
 static void dkst_engine_set_capabilities(IBusEngine *e, guint caps) {
   // Log the capabilities reported by the client application
   debug_log("set_capabilities: %x\n", caps);
@@ -1090,6 +1101,7 @@ static void dkst_engine_class_init(DkstEngineClass *klass) {
   engine_class->focus_in = dkst_engine_focus_in;
   engine_class->focus_out = dkst_engine_focus_out;
   engine_class->reset = dkst_engine_reset;
+  engine_class->enable = dkst_engine_enable;
   engine_class->disable = dkst_engine_disable;
   engine_class->set_capabilities = dkst_engine_set_capabilities;
 

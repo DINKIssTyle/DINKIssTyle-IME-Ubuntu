@@ -11,7 +11,7 @@
  *
  * Features:
  *   - KO/EN icon indicator in the top panel
- *   - Popup menu with integrated Settings, Dictionary tab, IBus icon toggle
+ *   - Popup menu with integrated Settings, IBus icon toggle
  *   - Persistent IBus icon hide preference
  */
 
@@ -135,11 +135,6 @@ class DkstIndicator extends PanelMenu.Button {
         settingsItem.connect('activate', () => this._launchSetup());
         this.menu.addMenuItem(settingsItem);
 
-        // ── Dictionary (사전) ──
-        const dictItem = new PopupMenu.PopupMenuItem('사전');
-        dictItem.connect('activate', () => this._launchDictEditor());
-        this.menu.addMenuItem(dictItem);
-
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
 
         // ── IBus Icon Hide Toggle ──
@@ -201,13 +196,6 @@ class DkstIndicator extends PanelMenu.Button {
         } catch (e) {
             console.error(`[DKST] Failed to launch setup: ${e.message}`);
         }
-    }
-
-    /**
-     * Launch the DKST hanja dictionary editor.
-     */
-    _launchDictEditor() {
-        this._launchSetup('dictionary');
     }
 
     /**
