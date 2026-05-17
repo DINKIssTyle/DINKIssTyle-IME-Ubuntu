@@ -152,7 +152,7 @@ class DkstIndicator extends PanelMenu.Button {
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
 
         // ── About (정보) ──
-        const aboutItem = new PopupMenu.PopupMenuItem('DKST 정보');
+        const aboutItem = new PopupMenu.PopupMenuItem('DKST 한글입력기 정보');
         aboutItem.connect('activate', () => this._showAbout());
         this.menu.addMenuItem(aboutItem);
     }
@@ -220,8 +220,8 @@ class DkstIndicator extends PanelMenu.Button {
      */
     _showAbout() {
         Main.notify(
-            'DKST 한국어 입력기',
-            'DKST Korean Input Method\nVersion 1.0\n© 2026 DINKI\'ssTyle'
+            'DKST Linux(iBUS)용 한글입력기 표시기',
+            'Version 1.0\n© 2026 DINKI\'ssTyle'
         );
     }
 
