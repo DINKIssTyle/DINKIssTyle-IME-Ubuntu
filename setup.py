@@ -250,10 +250,6 @@ class SettingsWindow(Gtk.Window):
         top = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
         page.pack_start(top, False, False, 0)
 
-        btn_refresh = Gtk.Button(label="새로고침")
-        btn_refresh.connect("clicked", self.on_refresh_dictionary_clicked)
-        top.pack_start(btn_refresh, False, False, 0)
-
         self.search_entry = Gtk.SearchEntry()
         self.search_entry.set_placeholder_text("한글 또는 후보 문자를 검색")
         self.search_entry.connect("search-changed", self.on_dictionary_search_changed)
@@ -263,9 +259,9 @@ class SettingsWindow(Gtk.Window):
         btn_update.connect("clicked", self.on_update_dictionary_clicked)
         top.pack_start(btn_update, False, False, 0)
 
-        btn_save = Gtk.Button(label="사전 저장")
-        btn_save.connect("clicked", self.on_save_dictionary_clicked)
-        top.pack_start(btn_save, False, False, 0)
+        btn_refresh = Gtk.Button(label="새로고침")
+        btn_refresh.connect("clicked", self.on_refresh_dictionary_clicked)
+        top.pack_start(btn_refresh, False, False, 0)
 
         note = Gtk.Label(
             label=(
@@ -697,14 +693,6 @@ class SettingsWindow(Gtk.Window):
         if iterator:
             child_iter = self.dict_filter.convert_iter_to_child_iter(iterator)
             self.dict_store.remove(child_iter)
-
-    def on_save_dictionary_clicked(self, widget):
-        try:
-            self.save_dictionary()
-            self.restart_ibus()
-            self.show_info("저장 완료", "사용자 사전이 저장되고 IBus가 재시작되었습니다.")
-        except Exception as exc:
-            self.show_error("사용자 사전을 저장할 수 없습니다.", str(exc))
 
     def on_refresh_dictionary_clicked(self, widget):
         try:
