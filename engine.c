@@ -595,6 +595,23 @@ static void select_hanja_candidate(DkstEngine *engine, guint index) {
   if (space)
     *space = '\0';
 
+  // The lookup source may include text that has already been committed into
+  // the client plus the current preedit syllable. Resetting preedit only removes
+  // the latter, so explicitly delete the committed part before committing the
+  // selected replacement.
+  glong committed_source_len = 0;
+  if (engine->hanja_source) {
+    committed_source_len = g_utf8_strlen(engine->hanja_source, -1);
+    if (dkst_hangul_has_composed(&engine->hangul) && committed_source_len > 0) {
+      committed_source_len--;
+    }
+  }
+  if (committed_source_len > 0) {
+    ibus_engine_delete_surrounding_text((IBusEngine *)engine,
+                                        -committed_source_len,
+                                        committed_source_len);
+  }
+
   // Clear word buffer when hanja is selected (word is replaced)
   if (engine->word_buffer) {
     g_free(engine->word_buffer);
